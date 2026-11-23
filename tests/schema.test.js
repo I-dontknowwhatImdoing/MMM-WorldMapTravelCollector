@@ -132,8 +132,8 @@ describe("validateTrip", () => {
 		[{ country: "PT", date: "2025-03", travelers: "Alex", lat: 95, lon: 10 }, ["Latitude must be between -90 and 90 (got '95')"]],
 		[{ country: "PT", date: "2025-03", travelers: "Alex", lat: 10, lon: 200 }, ["Longitude must be between -180 and 180 (got '200')"]],
 		[{ country: "PT", date: "2025-03", travelers: "Alex", lat: "abc", lon: 1 }, ["Latitude must be between -90 and 90 (got 'abc')"]],
-		[{ city: "Lisbn", country: "PT", date: "2025-03", travelers: "Alex" }, ["Unknown city 'Lisbn' in PT. Did you mean Lisbon?"]],
-		[{ city: "Qqqqqq", country: "PT", date: "2025-03", travelers: "Alex" }, ["Unknown city 'Qqqqqq' in PT. Check the spelling or add its latitude and longitude"]]
+		[{ city: "Lisbn", country: "PT", date: "2025-03", travelers: "Alex" }, ["Unknown city 'Lisbn' in Portugal. Did you mean Lisbon?"]],
+		[{ city: "Qqqqqq", country: "PT", date: "2025-03", travelers: "Alex" }, ["Unknown city 'Qqqqqq' in Portugal. Check the spelling or add its latitude and longitude"]]
 	])("rejects %p", (row, errors) => {
 		const r = validateTrip(row, c);
 		expect(r.ok).toBe(false);

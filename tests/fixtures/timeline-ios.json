@@ -1,0 +1,55 @@
+[
+ {
+  "startTime": "2025-03-02T15:00:00.000+00:00",
+  "endTime": "2025-03-05T09:00:00.000+00:00",
+  "visit": {
+   "hierarchyLevel": "0",
+   "probability": "0.9",
+   "topCandidate": {
+    "probability": "0.7",
+    "semanticType": "Unknown",
+    "placeID": "ChIJ_fake",
+    "placeLocation": "geo:38.722300,-9.139300"
+   }
+  }
+ },
+ {
+  "startTime": "2025-10-03T12:00:00.000+01:00",
+  "endTime": "2025-10-06T12:00:00.000+01:00",
+  "visit": {
+   "hierarchyLevel": "0",
+   "probability": "0.9",
+   "topCandidate": {
+    "probability": "0.7",
+    "semanticType": "Unknown",
+    "placeID": "ChIJ_fake2",
+    "placeLocation": "geo:31.629500,-7.981100"
+   }
+  }
+ },
+ {
+  "startTime": "2025-10-01T12:00:00.000-04:00",
+  "endTime": "2025-10-02T12:00:00.000-04:00",
+  "visit": {
+   "hierarchyLevel": "0",
+   "probability": "0.9",
+   "topCandidate": {
+    "probability": "0.9",
+    "semanticType": "Inferred Home",
+    "placeID": "ChIJ_home",
+    "placeLocation": "geo:42.360100,-71.058900"
+   }
+  }
+ },
+ {
+  "startTime": "2025-10-03T08:00:00.000+01:00",
+  "endTime": "2025-10-03T11:00:00.000+01:00",
+  "activity": {
+   "start": "geo:31.6,-8.0",
+   "end": "geo:31.62,-7.98",
+   "topCandidate": {
+    "type": "in passenger vehicle"
+   }
+  }
+ }
+]

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Milestone 4: Trip editor and imports
+
+- Trip editor for your phone, served by the mirror at `http://<mirror>:8080/MMM-WorldMapTravelCollector/`: list and search trips, add with city autocomplete, edit, delete. Works in light and dark mode.
+- Same city and month as an existing trip combines the travelers, so two people's entries become one together trip.
+- Rows that can't be read are kept in the file and listed in the editor to fix, instead of being lost.
+- Imports with a review step (tick, untick and change rows before saving):
+  - Google Maps Timeline: the phone export (Android and iPhone) and older Takeout monthly files. One trip per city and month, with days; time at home left out; short stops start unticked; home guessed when not configured.
+  - Saved places: Takeout "Saved Places.json", "Saved" lists (CSV), My Maps KML/KMZ, or a whole Takeout zip. "Want to go" lists start unticked.
+  - Spreadsheets (CSV/JSON) with column matching.
+- Google Sheet as a trip source (`sheetUrl`, `sheetRefreshMinutes`), with an offline copy and clear messages when the sheet isn't published.
+- Optional `editorPin`, with a lockout after five wrong tries.
+- Backups: list and restore the last 10 versions from the editor. Download all trips as CSV.
+- Only coordinates you set by hand are saved, so renaming a city moves its pin.
+- The note under the ledger now says which source has a problem (for example the Google Sheet).
+- `npm run preview` also serves the editor.
+
 ### Milestone 3: Ledger, stats, views and the Analog theme
 
 - Ledger: a ruled grid of places and dates under the map, newest first. Rows, columns, sort order, date format, traveler markers (dots, initials, color), country and days are all options.

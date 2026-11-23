@@ -200,9 +200,13 @@ describe("map", () => {
 	test("reports skipped rows unless turned off", async () => {
 		const m = await mount();
 		data(m, { ...model, problems: [{}, {}] });
-		expect(text(".wmtc-footer")).toBe("2 rows skipped. Check your trips file.");
+		expect(text(".wmtc-footer")).toBe("2 rows skipped. Open the trip editor to see why.");
 		data(m, { ...model, problems: [{}] });
-		expect(text(".wmtc-footer")).toBe("1 row skipped. Check your trips file.");
+		expect(text(".wmtc-footer")).toBe("1 row skipped. Open the trip editor to see why.");
+		data(m, { ...model, problems: [{ row: 3 }, { source: "Google Sheet", row: 0, errors: ["The sheet isn't shared"] }] });
+		expect(text(".wmtc-footer")).toBe("Google Sheet: The sheet isn't shared");
+		data(m, { ...model, problems: [{ source: "trips.json", row: 0 }] });
+		expect(text(".wmtc-footer")).toBe("trips.json: couldn't be read");
 		const quiet = await mount({ showProblems: false });
 		data(quiet, { ...model, problems: [{}] });
 		expect(text(".wmtc-footer")).toBe("");

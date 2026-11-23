@@ -1,0 +1,75 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "geometry": {
+    "coordinates": [
+     -9.216,
+     38.6916
+    ],
+    "type": "Point"
+   },
+   "properties": {
+    "date": "2023-05-01T10:00:00Z",
+    "google_maps_url": "http://maps.google.com/?cid=1",
+    "location": {
+     "address": "Av. Brasília, 1400-038 Lisboa, Portugal",
+     "country_code": "PT",
+     "name": "Torre de Belém"
+    }
+   },
+   "type": "Feature"
+  },
+  {
+   "geometry": {
+    "coordinates": [
+     0,
+     0
+    ],
+    "type": "Point"
+   },
+   "properties": {
+    "date": "2023-05-01T10:00:00Z",
+    "google_maps_url": "http://maps.google.com/?cid=2",
+    "location": {
+     "address": "Rua Augusta 24, 1100-053 Lisboa, Portugal",
+     "country_code": "PT",
+     "name": "Pastelaria"
+    }
+   },
+   "type": "Feature"
+  },
+  {
+   "geometry": {
+    "coordinates": [
+     135.7727,
+     34.9671
+    ],
+    "type": "Point"
+   },
+   "properties": {
+    "google_maps_url": "http://maps.google.com/?cid=3",
+    "location": {
+     "address": "68 Fukakusa Yabunouchicho, Fushimi Ward, Kyoto, 612-0882, Japan",
+     "country_code": "JP",
+     "name": "Fushimi Inari Taisha"
+    }
+   },
+   "type": "Feature"
+  },
+  {
+   "geometry": {
+    "coordinates": [
+     0,
+     0
+    ],
+    "type": "Point"
+   },
+   "properties": {
+    "Title": "Somewhere",
+    "google_maps_url": "http://maps.google.com/?q=Somewhere"
+   },
+   "type": "Feature"
+  }
+ ]
+}
