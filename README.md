@@ -6,7 +6,7 @@ A [MagicMirror²](https://magicmirror.builders/) module that maps everywhere you
 | --- | --- |
 | ![Digital theme](screenshots/digital-all.png) | ![Analog theme](screenshots/analog-all.png) |
 
-- Countries you've visited are shaded, and each city gets a pin. Planned trips show as dashed outlines.
+- Each place you've visited gets a pin, and planned trips show as hollow pins. Visited countries can be shaded too (`shadeCountries`).
 - Views for trips taken together, by each person, by year or by month, which take turns on the mirror.
 - A ledger of places and dates, and a stats line: countries, cities, continents, share of the world, trips this year, distance.
 - Add and fix trips from your phone, or import your Google Maps Timeline, saved places, My Maps or a spreadsheet. A Google Sheet works too.
@@ -173,9 +173,10 @@ Some options take a list, like `views` and `stats`. Write a list in square brack
 | `contrast` | `"normal"` | `"high"` makes grey text and lines brighter, for dim mirrors or a room with daylight |
 | `projection` | `"equalEarth"` | The map's shape: `"equalEarth"` (curved edges, true sizes), `"naturalEarth"` (less curved), `"equirectangular"` (a flat rectangle that fills the width) or `"mercator"` (flat, but countries near the poles look much bigger) |
 | `hideAntarctica` | `true` | Leave Antarctica off the map |
+| `shadeCountries` | `false` | `true` fills each visited country with its color and outlines planned ones, as well as the pins. `false` shows pins only: a trip without a city (a road trip, "Iceland") gets a pin in the middle of its country. Countries can be tapped for their trips either way |
 | `layout` | `"fullscreen"` | `"fullscreen"` (use a `fullscreen_below` or `fullscreen_above` position) or `"centered"` (any position, sized by `maxWidth` and `maxHeight`) |
 | `maxWidth`, `maxHeight` | `"90%"`, `"80%"` | Size when `layout` is `"centered"`. Percentages are of the screen; pixels (`"900px"`) work too |
-| `showPlanned` | `true` | Show future trips as dashed outlines and hollow pins |
+| `showPlanned` | `true` | Show future trips as hollow pins (and dashed outlines with `shadeCountries`) |
 | `highlightNewest` | `true` | Gently pulse the most recent trip on the map, and mark it in the ledger |
 | `animations` | `true` | `false` turns off all motion: the pulse on the newest trip and the fade when views change |
 

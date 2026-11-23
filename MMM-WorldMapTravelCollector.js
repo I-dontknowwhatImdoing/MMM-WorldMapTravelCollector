@@ -37,6 +37,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		contrast: "normal", // "high": brighter grey text and lines, for dim mirrors
 		projection: "equalEarth", // map shape: "equalEarth" (curved edges) | "naturalEarth" (less curved) | "equirectangular" (flat rectangle) | "mercator"
 		hideAntarctica: true,
+		shadeCountries: false, // true: fill visited countries and outline planned ones; false: pins only (a trip without a city gets a pin in the middle of its country)
 		animations: true,
 		highlightNewest: true,
 		fadeByAge: false, // places visited long ago are drawn fainter, recent ones in full color
@@ -776,6 +777,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const view = this.currentView();
 		const pinKey = this.pinNear(e) || (target.closest("[data-pin]") ? target.closest("[data-pin]").getAttribute("data-pin") : null);
 		const countryEl = pinKey ? null : target.closest("[data-code]");
+		if (pinKey && pinKey.startsWith("country:")) return this.showCountry(pinKey.slice(8), e);
 		const pin = pinKey && view ? view.pins.find((p) => p.key === pinKey) : null;
 		const country = countryEl && view ? view.countries[countryEl.getAttribute("data-code")] : null;
 		if (pin) this.showPin(pin, e);
@@ -963,9 +965,18 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const f = WMTCLayout.fadeFactor(last, month, fade);
 			return f < 1 ? `;--wmtc-fade:${f}` : "";
 		};
+		const shade = Boolean(this.config.shadeCountries);
+		// Without shaded countries the pins carry the whole map, so they are drawn bigger.
+		const pinBase = scale.pinRadius * (shade ? 1 : 1.6);
 		for (const { el: p, code } of countryPaths) {
 			const state = states[code];
-			if (state && (state.state === "visited" || showPlanned)) {
+			if (state && !shade && (state.state === "visited" || showPlanned)) {
+				// Pins only: the country stays plain, but can still be tapped for its trips.
+				p.setAttribute("class", "wmtc-country wmtc-has-trips");
+				p.setAttribute("data-code", code);
+				p.removeAttribute("style");
+				p.removeAttribute("filter");
+			} else if (state && (state.state === "visited" || showPlanned)) {
 				p.setAttribute("class", `wmtc-country wmtc-${state.state}`);
 				p.setAttribute("data-code", code);
 				p.setAttribute("style", `--wmtc-color:${this.placeColor(state)}${state.state === "visited" ? fadeStyle(state.last) : ""}`);
@@ -988,7 +999,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			if (pin.planned && !showPlanned) continue;
 			const xy = projection([pin.lon, pin.lat]);
 			if (!xy || !Number.isFinite(xy[0])) continue;
-			const r = WMTCLayout.pinRadius(scale.pinRadius, pin.visits);
+			const r = WMTCLayout.pinRadius(pinBase, pin.visits);
 			const color = this.placeColor(pin);
 			const circle = svgEl("circle", {
 				cx: xy[0].toFixed(1),
@@ -1003,6 +1014,34 @@ Module.register("MMM-WorldMapTravelCollector", {
 			this.pinPoints.push({ key: pin.key, x: xy[0], y: xy[1], reach: Math.max(r + 6, scale.pinRadius * 3, 14) });
 			if (pin.newest && this.config.highlightNewest) {
 				haloLayer.appendChild(svgEl("circle", { cx: xy[0].toFixed(1), cy: xy[1].toFixed(1), r: r * 1.1, class: "wmtc-halo", style: `--wmtc-color:${color}` }));
+			}
+		}
+		// Pins only: a country visited without a city (a road trip, "Iceland") gets its pin in the middle of the country.
+		if (!shade && view) {
+			const withPins = new Set(view.pins.map((p) => p.country));
+			for (const [code, c] of Object.entries(view.countries)) {
+				if (withPins.has(code) || (c.state === "planned" && !showPlanned)) continue;
+				const xy = this.countryCenter(code);
+				if (!xy) continue;
+				const planned = c.state === "planned";
+				const r = WMTCLayout.pinRadius(pinBase, 1);
+				const color = this.placeColor(c);
+				const key = `country:${code}`;
+				const circle = svgEl("circle", {
+					cx: xy[0].toFixed(1),
+					cy: xy[1].toFixed(1),
+					r,
+					class: planned ? "wmtc-pin wmtc-pin-country wmtc-pin-planned" : "wmtc-pin wmtc-pin-country",
+					"data-pin": key,
+					style: `--wmtc-color:${color}${planned ? "" : fadeStyle(c.last)}`
+				});
+				const name = this.model.trips[c.tripIds[0]] ? this.model.trips[c.tripIds[0]].countryName : code;
+				circle.appendChild(svgEl("title", {}, name));
+				pinLayer.appendChild(circle);
+				this.pinPoints.push({ key, x: xy[0], y: xy[1], reach: Math.max(r + 6, scale.pinRadius * 3, 14) });
+				if (view.newestId && c.tripIds.includes(view.newestId) && this.config.highlightNewest) {
+					haloLayer.appendChild(svgEl("circle", { cx: xy[0].toFixed(1), cy: xy[1].toFixed(1), r: r * 1.1, class: "wmtc-halo", style: `--wmtc-color:${color}` }));
+				}
 			}
 		}
 		svg.append(haloLayer, pinLayer);
@@ -1042,11 +1081,35 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const p = svgEl("path", { d, class: "wmtc-country" });
 			p.appendChild(svgEl("title", {}, f.properties.name));
 			countryLayer.appendChild(p);
-			countryPaths.push({ el: p, code: f.properties.iso2 });
+			countryPaths.push({ el: p, code: f.properties.iso2, feature: f });
 		}
 		svg.appendChild(countryLayer);
 		this.mapEl.appendChild(svg);
-		return { key, svg, projection, countryPaths, filterId };
+		return { key, svg, projection, path, countryPaths, filterId, centers: {} };
+	},
+
+	/** The middle of a country's largest piece of land (so France's pin is in France, not between its islands). */
+	countryCenter (code) {
+		const base = this.mapBase;
+		if (!base) return null;
+		if (code in base.centers) return base.centers[code];
+		let best = null;
+		let bestArea = -1;
+		for (const { code: c, feature } of base.countryPaths) {
+			if (c !== code || !feature.geometry) continue;
+			const g = feature.geometry;
+			const pieces = g.type === "MultiPolygon" ? g.coordinates.map((coordinates) => ({ type: "Polygon", coordinates })) : [g];
+			for (const piece of pieces) {
+				const area = d3.geoArea(piece);
+				if (area > bestArea) {
+					bestArea = area;
+					best = piece;
+				}
+			}
+		}
+		const xy = best ? base.path.centroid(best) : null;
+		base.centers[code] = xy && Number.isFinite(xy[0]) ? xy : null;
+		return base.centers[code];
 	},
 
 	/** "Tap a place for details", on touch screens until the first tap. */

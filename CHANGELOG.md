@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Pins only by default
+
+- New option `shadeCountries`, `false` by default: the map shows pins only, and countries stay plain. A trip without a city (a road trip, "Iceland") gets a pin in the middle of its country. `shadeCountries: true` brings back the shaded countries and dashed outlines for planned trips.
+- Countries can still be tapped for their trips either way.
+
 ### People · Years · Months tabs
 
 - New tabs before the view buttons switch between **People** (all, together, each person), **Years** and **Months**. Only that group's buttons show, so a mirror with many years doesn't fill up with buttons. The mirror takes turns only through the chosen group. `viewGroups: false` goes back to one row.

@@ -52,7 +52,8 @@ async function mount (cfg = {}, { fetchImpl } = {}) {
 	m.name = definition.name;
 	m.identifier = "module_1";
 	m.defaults = definition.def.defaults;
-	m.config = { ...definition.def.defaults, travelers: [{ name: "Alex", color: "#4FC3F7" }, { name: "Sam", color: "#F48FB1" }], ...cfg };
+	// Most tests look at shaded countries; the pins-only default (shadeCountries: false) has its own tests.
+	m.config = { ...definition.def.defaults, travelers: [{ name: "Alex", color: "#4FC3F7" }, { name: "Sam", color: "#F48FB1" }], shadeCountries: true, ...cfg };
 	m.file = (p) => `/modules/x/${p}`;
 	m.sent = [];
 	m.sendSocketNotification = (n, p) => m.sent.push([n, p]);
@@ -1091,5 +1092,46 @@ describe("group tabs: People · Years · Months", () => {
 		expect(document.querySelector(".wmtc-pos-active")).toBe($$(".wmtc-pos")[1]);
 		document.querySelector("[aria-label='Next view']").click();
 		expect(text(".wmtc-switcher-current")).toBe("2024");
+	});
+});
+
+describe("pins only (shadeCountries: false, the default)", () => {
+	const click = (target, coords = {}) => target.dispatchEvent(new MouseEvent("click", { bubbles: true, ...coords }));
+	const roadTrip = trip({ id: "nor", city: "", country: "NO", date: "2022-07", days: 9 });
+	const plannedRoadTrip = trip({ id: "nz", city: "", country: "NZ", date: "2027-02" });
+
+	test("it's the default", () => {
+		expect(definition.def.defaults.shadeCountries).toBe(false);
+	});
+
+	test("countries stay plain; trips without a city get a pin in the middle of their country", async () => {
+		const m = await mount({ shadeCountries: false });
+		data(m, build([...trips, roadTrip, plannedRoadTrip]));
+		expect($$(".wmtc-country.wmtc-visited, .wmtc-country.wmtc-planned")).toHaveLength(0);
+		const pt = document.querySelector(".wmtc-country[data-code='PT']");
+		expect(pt.getAttribute("class")).toBe("wmtc-country wmtc-has-trips");
+		expect(pt.getAttribute("style")).toBeNull();
+		// Cities keep their pins; Norway (no city) and planned New Zealand get one each.
+		expect($$(".wmtc-pin:not(.wmtc-pin-country)").map((p) => p.getAttribute("data-pin")).sort()).toEqual(["cape town|ZA", "chicago|US", "lisbon|PT", "reykjavik|IS"]);
+		expect($$(".wmtc-pin-country").map((p) => p.getAttribute("data-pin"))).toEqual(["country:NO", "country:NZ"]);
+		expect(document.querySelector("[data-pin='country:NZ']").classList.contains("wmtc-pin-planned")).toBe(true);
+		const no = m.pinPoints.find((p) => p.key === "country:NO");
+		expect(Number.isFinite(no.x) && Number.isFinite(no.y)).toBe(true);
+
+		// Tapping that pin opens the country's card, and so does tapping a plain country.
+		click(document.querySelector(".wmtc-svg"), { clientX: no.x, clientY: no.y });
+		expect(text(".wmtc-detail-title")).toBe("Norway");
+		click(pt);
+		expect(text(".wmtc-detail-title")).toBe("Portugal");
+	});
+
+	test("planned trips without a city stay hidden with showPlanned: false; recoloring keeps working", async () => {
+		const m = await mount({ shadeCountries: false, showPlanned: false });
+		data(m, build([...trips, roadTrip, plannedRoadTrip]));
+		expect($$(".wmtc-pin-country").map((p) => p.getAttribute("data-pin"))).toEqual(["country:NO"]);
+		m.setView("solo:Sam");
+		expect($$(".wmtc-pin-country")).toHaveLength(0);
+		m.setView("all");
+		expect($$(".wmtc-pin-country")).toHaveLength(1);
 	});
 });
