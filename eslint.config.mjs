@@ -22,8 +22,16 @@ export default [
 		}
 	},
 	{
+		files: ["MMM-WorldMapTravelCollector.js", "lib/layout.js"],
+		languageOptions: { globals: { ...globals.browser } }
+	},
+	{
 		files: ["tests/**/*.js"],
 		languageOptions: { globals: { ...globals.node, ...globals.jest } }
+	},
+	{
+		files: ["tests/frontend.test.js"],
+		languageOptions: { globals: { ...globals.browser, ...globals.node, ...globals.jest, Log: "readonly" } }
 	},
 	{
 		files: ["**/*.mjs"],

@@ -1,0 +1,189 @@
+/* MMM-WorldMapTravelCollector
+ * Every color and size is a CSS variable, so you can restyle it from MagicMirror's custom.css:
+ *   .wmtc { --wmtc-land: rgba(255,255,255,0.08); }
+ */
+
+.wmtc {
+	--wmtc-font: 16px;
+	--wmtc-line: 0.6px;
+	--wmtc-text: rgba(255, 255, 255, 0.9);
+	--wmtc-muted: rgba(255, 255, 255, 0.5);
+	--wmtc-land: rgba(255, 255, 255, 0.055);
+	--wmtc-border: rgba(255, 255, 255, 0.26);
+	--wmtc-visited-opacity: 0.42;
+	--wmtc-pin-outline: #000;
+
+	position: relative;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--wmtc-font) * 0.5);
+	font-size: var(--wmtc-font);
+	line-height: 1.2;
+	color: var(--wmtc-text);
+	text-align: left;
+	overflow: hidden;
+}
+
+.wmtc *,
+.wmtc *::before,
+.wmtc *::after {
+	box-sizing: border-box;
+}
+
+.wmtc-layout-fullscreen {
+	width: 100vw;
+	height: 100vh;
+	padding: calc(var(--wmtc-font) * 1.2);
+}
+
+.wmtc-layout-centered {
+	margin: 0 auto;
+}
+
+/* Header: view name on the left, legend on the right */
+.wmtc-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: calc(var(--wmtc-font) * 0.4) calc(var(--wmtc-font) * 1.5);
+	min-height: calc(var(--wmtc-font) * 1.3);
+}
+
+.wmtc-title {
+	font-size: 0.85em;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--wmtc-font) * 0.3) calc(var(--wmtc-font) * 1.1);
+	font-size: 0.8em;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-legend-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	white-space: nowrap;
+}
+
+.wmtc-dot {
+	display: inline-block;
+	width: 0.7em;
+	height: 0.7em;
+	border-radius: 50%;
+	background: var(--wmtc-color);
+	box-shadow: 0 0 0.5em var(--wmtc-color);
+}
+
+.wmtc-dot-planned {
+	background: transparent;
+	box-shadow: none;
+	border: max(1.5px, calc(var(--wmtc-font) * 0.09)) dashed var(--wmtc-muted);
+}
+
+/* Map */
+.wmtc-map {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.wmtc-svg {
+	position: absolute;
+	inset: 0;
+	display: block;
+	overflow: visible;
+}
+
+.wmtc-message {
+	position: absolute;
+	inset: auto 0 0 0;
+	z-index: 1;
+	text-align: center;
+	font-size: 0.85em;
+	color: var(--wmtc-muted);
+	pointer-events: none;
+}
+
+.wmtc-country {
+	fill: var(--wmtc-land);
+	stroke: var(--wmtc-border);
+	stroke-width: var(--wmtc-line);
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
+}
+
+.wmtc-country.wmtc-visited {
+	fill: var(--wmtc-color);
+	fill-opacity: var(--wmtc-visited-opacity);
+	stroke: var(--wmtc-color);
+	stroke-opacity: 0.85;
+}
+
+.wmtc-country.wmtc-planned {
+	stroke: var(--wmtc-color);
+	stroke-opacity: 0.9;
+	stroke-dasharray: calc(var(--wmtc-line) * 5) calc(var(--wmtc-line) * 4);
+	stroke-width: calc(var(--wmtc-line) * 1.6);
+}
+
+.wmtc-pin {
+	fill: var(--wmtc-color);
+	stroke: var(--wmtc-pin-outline);
+	stroke-width: calc(var(--wmtc-line) * 1.2);
+	filter: drop-shadow(0 0 calc(var(--wmtc-line) * 5) var(--wmtc-color));
+}
+
+.wmtc-pin-planned {
+	fill: rgba(0, 0, 0, 0.6);
+	stroke: var(--wmtc-color);
+	stroke-width: calc(var(--wmtc-line) * 2);
+	stroke-dasharray: calc(var(--wmtc-line) * 3) calc(var(--wmtc-line) * 2.5);
+	filter: none;
+}
+
+/* The newest trip gently pulses */
+.wmtc-halo {
+	fill: none;
+	stroke: var(--wmtc-color);
+	stroke-width: calc(var(--wmtc-line) * 2.5);
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: wmtc-pulse 2.8s ease-out infinite;
+}
+
+@keyframes wmtc-pulse {
+	0% {
+		transform: scale(1);
+		opacity: 0.9;
+	}
+
+	100% {
+		transform: scale(3.2);
+		opacity: 0;
+	}
+}
+
+.wmtc-no-motion .wmtc-halo {
+	animation: none;
+	transform: scale(1.8);
+	opacity: 0.6;
+}
+
+.wmtc-footer {
+	min-height: 0;
+	font-size: 0.7em;
+	color: var(--wmtc-muted);
+	text-align: right;
+}
+
+.wmtc-footer:empty {
+	display: none;
+}
