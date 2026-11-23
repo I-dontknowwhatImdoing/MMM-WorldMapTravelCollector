@@ -57,6 +57,7 @@
     "d3-array": "^3.2.5",
     "d3-geo": "^3.1.2",
     "fast-xml-parser": "^5.12.1",
+    "qrcode-generator": "^2.0.4",
     "topojson-client": "^3.1.0"
   }
 }

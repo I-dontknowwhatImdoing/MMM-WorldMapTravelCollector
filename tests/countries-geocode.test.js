@@ -148,6 +148,37 @@ describe("geocoder on a tiny dataset", () => {
 	});
 });
 
+describe("memory: the city table and the reverse-lookup index", () => {
+	const { readCityTable } = require("../lib/geodata");
+
+	test("reads the tab-separated city file into columns", () => {
+		const t = readCityTable(Buffer.from("name\tcountry\tlat\tlon\tpopulation\tregion\tnormalized\nSão Paulo\tBR\t-23.5475\t-46.6361\t10021295\t\tsao paulo\nParis\tUS\t33.6609\t-95.5555\t25171\tTX\t\n"));
+		expect(t.names).toEqual(["São Paulo", "Paris"]);
+		expect(t.norms).toEqual(["sao paulo", "paris"]);
+		expect([...t.lat]).toEqual([-23.5475, 33.6609]);
+		expect([...t.lon]).toEqual([-46.6361, -95.5555]);
+		expect([...t.pop]).toEqual([10021295, 25171]);
+		expect(t.codes).toEqual(["BR", "US"]);
+		expect(t.region.get(1)).toBe("TX");
+		const g = createGeocoder({ table: t });
+		expect(g.lookup("sao paulo", "BR")).toMatchObject({ name: "São Paulo", region: "" });
+		expect(g.autocomplete("par", "US")[0]).toMatchObject({ name: "Paris", region: "TX", isDefault: true });
+	});
+
+	test("the reverse-lookup index is dropped after a while unused, and rebuilt when needed", () => {
+		jest.useFakeTimers();
+		try {
+			const g = createGeocoder({ rows: [["Lisbon", "PT", 38.7167, -9.1333, 517802]], idleMs: 1000 });
+			expect(g.nearest(38.72, -9.14).name).toBe("Lisbon");
+			jest.advanceTimersByTime(1500);
+			expect(g.nearest(38.72, -9.14).name).toBe("Lisbon");
+			expect(g.nearest(89.9, 179.9)).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+});
+
 describe("loadGeoData", () => {
 	test("is cached", () => {
 		expect(loadGeoData()).toBe(geo);

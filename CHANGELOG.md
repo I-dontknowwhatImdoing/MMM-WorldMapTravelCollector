@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Mirror: getting started, readability and speed
+
+- "Add trips from your phone": the map shows the trip editor's address and a QR code to scan, in the middle when there are no trips yet and in a corner for the first 10 minutes after each start. If MagicMirror only lets the mirror itself in (its default), the mirror says so and points to the README instead. New option `showEditorLink` (`"auto"`, `true`, `false`).
+- MagicMirror's log shows the editor's real address, and the module's name once instead of twice.
+- Grey text (dates, stat labels, the key) is brighter, so it reads through mirror glass. New option `contrast: "high"` for dim mirrors.
+- Month colors that people with red-green color blindness can tell apart. New `colorBy: "season"` with 4 colors (and `seasonColors`, `hemisphere`).
+- With many views (one per year), the buttons turn into one ‹ 2025 › button with a dot per view instead of wrapping over two lines. New option `viewSwitcher`.
+- Touch screens show "Tap a place for details" until the first tap. A tap anywhere outside the details card closes it. `detailsNotes: false` keeps trip notes off the mirror.
+- Switching views is much faster: the country shapes are drawn once and only recolored (about 140 ms down to 5 ms here; on a Pi 4, from about half a second).
+- Less memory: the city list takes about 20 MB instead of 50, and the index used for imports is let go after 10 minutes.
+- Ledger `rows` is now `"auto"` by default: 5, or more on a portrait screen when there are trips to fill the space under the map.
+
 ### Editor: easier on a phone
 
 - Mistakes show under the field they're about, and the page scrolls to the first one. A misspelled city offers "Did you mean…" buttons.

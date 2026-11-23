@@ -42,22 +42,28 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | --- | --- | --- |
 | `travelers` | `[]` | Who travels: `{ name, color }` per person, or just names |
 | `togetherColor` | `"#FFD54F"` | Color for trips everyone took together |
-| `colorBy` | `"travelers"` | What the map's colors mean: `"travelers"` (together, or each person's color), `"year"` (the year of the most recent visit) or `"month"` (the calendar month of the most recent visit, by season) |
+| `colorBy` | `"travelers"` | What the map's colors mean: `"travelers"` (together, or each person's color), `"year"` (the year of the most recent visit), `"month"` (the calendar month of the most recent visit) or `"season"` (winter, spring, summer or autumn: 4 colors, the easiest to read) |
 | `yearColors` | `"gradient"` | For `colorBy: "year"`: `"gradient"` (oldest to newest), `"distinct"` (a clearly different color each year; they repeat after 8 years), or your own colors for some years, e.g. `{ 2025: "#E57373" }` (other years use the gradient) |
 | `yearGradient` | `["#5C6BC0", "#4DB6AC", "#FFD54F"]` | The gradient's colors, oldest year first. Two or more |
-| `monthColors` | seasonal | For `colorBy: "month"`: 12 colors, January first, to replace the seasonal ones |
+| `monthColors` | seasonal | For `colorBy: "month"`: 12 colors, January first, to replace the seasonal ones. The built-in ones are chosen so people with red-green color blindness can tell every month apart |
+| `seasonColors` | blue, green, yellow, orange | For `colorBy: "season"`: 4 colors, winter first |
+| `hemisphere` | `"north"` | For `colorBy: "season"`: `"south"` makes December summer |
 | `home` | `null` | `{ city: "Boston", country: "US" }` or `{ lat, lon }`. Needed for the distance stat |
 | `theme` | `"digital"` | `"digital"` (light lines on black, for mirrors) or `"analog"` (paper and ink, for TVs and frames) |
+| `contrast` | `"normal"` | `"high"` makes grey text and lines brighter, for dim mirrors or a room with daylight |
 | `layout` | `"fullscreen"` | `"fullscreen"` (use a `fullscreen_below`/`fullscreen_above` position) or `"centered"` (any position) |
 | `maxWidth`, `maxHeight` | `"90%"`, `"80%"` | Size when `layout` is `"centered"`. Percentages are of the screen |
 | `projection` | `"equalEarth"` | The map's shape: `"equalEarth"` (curved edges, true sizes), `"naturalEarth"` (less curved), `"equirectangular"` (a flat rectangle that fills the width) or `"mercator"` (flat, but countries near the poles look much bigger) |
 | `hideAntarctica` | `true` | Leave Antarctica off the map |
 | `filters` | `["all", "together", "solo"]` | Views to offer. `"solo"` adds one per traveler; `"person"` adds "every trip with this person"; `"years"` adds one per year with trips (newest first); `"months"` adds one per calendar month (all your March trips, any year). Single ones work too: `"year:2025"`, `"month:3"` |
 | `defaultFilter` | `"all"` | View to start on, e.g. `"together"`, `"solo:Sam"` or `"year:2025"` |
+| `viewSwitcher` | `"auto"` | How the views are offered: `"buttons"` (one per view), `"compact"` (one button showing the current view, with ‹ › either side and a dot per view) or `"auto"` (buttons while they fit on one line, compact when they don't) |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
 | `touchPause` | `120` | Seconds rotation pauses after a tap or a command |
 | `details` | `true` | Tap (or click) a pin or a country to see its trips: when, how many days, who went, notes, and for a country the number of trips and cities, first and latest visit |
 | `detailsTimeout` | `20` | Seconds before the details card closes by itself. `0` keeps it open until you tap × or somewhere else |
+| `detailsNotes` | `true` | Show trip notes on the details card. `false` keeps them off the mirror (guests can tap too) |
+| `detailsHint` | `true` | On touch screens, show "Tap a place for details" under the map until the first tap |
 | `showLegend` | `true` | Show the view chips (they double as the color key) |
 | `showStats` | `true` | Show the stats line |
 | `stats` | all six | Which stats, in order: `"countries"`, `"cities"`, `"continents"`, `"worldPercent"`, `"tripsThisYear"`, `"distance"` |
@@ -76,6 +82,7 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `sheetRefreshMinutes` | `30` | How often the sheet is checked |
 | `editor` | `true` | Serve the [trip editor](#the-trip-editor). `false` turns it off |
 | `editorPin` | `""` | A PIN the editor asks for. Empty means no PIN |
+| `showEditorLink` | `"auto"` | "Add trips from your phone", with a QR code and the editor's address, on the map. `"auto"`: in the middle when there are no trips yet, and in a corner for the first 10 minutes after each start. `true`: always in the corner. `false`: never |
 | `editorHosts` | `[]` | The editor opens at IP addresses, `localhost` and local names (`magicmirror`, `mirror.local`, `.lan`, `.home`). List any other name you use for the mirror here, e.g. `["mirror.example.net"]` |
 | `homeRadiusKm` | `50` | Timeline imports leave out visits this close to `home` |
 | `ledger` | see below | The list of places under the map |
@@ -85,7 +92,7 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | Option | Default | Description |
 | --- | --- | --- |
 | `enabled` | `true` | Show the ledger |
-| `rows`, `columns` | `5`, `4` | Grid size. On a portrait mirror try `rows: 11, columns: 2` |
+| `rows`, `columns` | `"auto"`, `4` | Grid size. `rows: "auto"` is 5, or more on a tall (portrait) screen when there are trips to fill the space under the map. On a portrait mirror, `columns: 2` or `3` leaves room for longer names |
 | `sort` | `"newest"` | `"newest"`, `"oldest"` or `"alpha"` |
 | `overflow` | `"cycle"` | When trips don't fit: `"cycle"` turns pages, `"shrink"` makes the text smaller |
 | `pageInterval` | `15` | Seconds per page, for `"cycle"` |
@@ -103,6 +110,8 @@ Add, change and delete trips from your phone. The mirror serves the editor itsel
 ```
 http://<your mirror's address>:8080/MMM-WorldMapTravelCollector/
 ```
+
+The mirror shows this address, with a QR code to scan, when there are no trips yet and for 10 minutes after each start (see `showEditorLink`). MagicMirror's log has it too (`Trip editor: http://…`). If the mirror says phones can't open the editor yet, see the next section.
 
 | Trips | Add a trip | Import a Timeline |
 | --- | --- | --- |
@@ -234,6 +243,7 @@ npm run build:geo   # rebuild geo/ from the original data sources (maintainers o
 - Cities: [GeoNames](https://www.geonames.org/) (CC BY 4.0) via [all-the-cities](https://github.com/zeke/all-the-cities) (MIT).
 - Fonts (Analog theme): [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand) and [IM Fell English](https://fonts.google.com/specimen/IM+Fell+English), SIL Open Font License 1.1 (see `fonts/`).
 - Country codes and names: [i18n-iso-countries](https://github.com/michaelwittig/node-i18n-iso-countries) (MIT) and [countries-list](https://github.com/annexare/Countries) (MIT).
+- QR codes: [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT).
 
 ## License
 
