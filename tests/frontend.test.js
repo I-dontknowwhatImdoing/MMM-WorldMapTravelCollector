@@ -82,12 +82,12 @@ describe("module definition", () => {
 		m.file = (p) => p;
 		expect(m.getScripts()).toEqual(expect.arrayContaining(["node_modules/d3-geo/dist/d3-geo.min.js", "lib/layout.js", "lib/ledger.js"]));
 		expect(m.getStyles()).toEqual(["css/wmtc.css"]);
-		expect(definition.def.defaults.ledger).toMatchObject({ rows: "auto", columns: 4, overflow: "cycle" });
+		expect(definition.def.defaults.ledger).toMatchObject({ rows: "auto", columns: "auto", overflow: "cycle" });
 	});
 
 	test("partial ledger config is filled in from defaults", async () => {
 		const m = await mount({ ledger: { rows: 2 } });
-		expect(m.config.ledger).toMatchObject({ rows: 2, columns: 4, sort: "newest" });
+		expect(m.config.ledger).toMatchObject({ rows: 2, columns: "auto", sort: "newest" });
 	});
 });
 
@@ -232,9 +232,9 @@ describe("map", () => {
 	test("reports skipped rows unless turned off", async () => {
 		const m = await mount();
 		data(m, { ...model, problems: [{}, {}] });
-		expect(text(".wmtc-footer")).toBe("2 rows skipped. Open the trip editor to see why.");
+		expect(text(".wmtc-footer")).toBe("2 trips can't be shown. Open the trip editor to see why.");
 		data(m, { ...model, problems: [{}] });
-		expect(text(".wmtc-footer")).toBe("1 row skipped. Open the trip editor to see why.");
+		expect(text(".wmtc-footer")).toBe("1 trip can't be shown. Open the trip editor to see why.");
 		data(m, { ...model, problems: [{ row: 3 }, { source: "Google Sheet", row: 0, errors: ["The sheet isn't shared"] }] });
 		expect(text(".wmtc-footer")).toBe("Google Sheet: The sheet isn't shared");
 		data(m, { ...model, problems: [{ source: "trips.json", row: 0 }] });
@@ -908,5 +908,82 @@ describe("phase 3: speed and room (M1, M3)", () => {
 		const wide = await mount();
 		data(wide, build(many));
 		expect(rowsOf()).toBe("repeat(5, 1fr)");
+	});
+});
+
+describe("AI walkthrough fixes (mirror)", () => {
+	const click = (target, coords = {}) => target.dispatchEvent(new MouseEvent("click", { bubbles: true, ...coords }));
+	const withPorto = () => build([...trips, trip({ id: "por", city: "Porto", country: "PT", date: "2023-05", days: 2 })]);
+
+	test("ledger columns: 4 on a wide screen, 2 on a tall one, or the number set", async () => {
+		const cols = () => document.querySelector(".wmtc-ledger-grid").style.gridTemplateColumns;
+		const wide = await mount();
+		data(wide);
+		expect(cols()).toBe("repeat(4, minmax(0, 1fr))");
+		const tall = await mount();
+		tall.wrapper.getBoundingClientRect = () => ({ width: 1080, height: 1920, top: 0, left: 0 });
+		data(tall);
+		expect(cols()).toBe("repeat(2, minmax(0, 1fr))");
+		const set = await mount({ ledger: { columns: 3 } });
+		set.wrapper.getBoundingClientRect = () => ({ width: 1080, height: 1920, top: 0, left: 0 });
+		data(set);
+		expect(cols()).toBe("repeat(3, minmax(0, 1fr))");
+	});
+
+	test("the stats line says which view its numbers are for, unless it's All", async () => {
+		const m = await mount();
+		data(m);
+		expect(document.querySelector(".wmtc-stat-view")).toBeNull();
+		m.setView("solo:Sam");
+		expect(text(".wmtc-stat-view")).toBe("Sam only:");
+		expect(document.querySelector(".wmtc-stat-view").style.getPropertyValue("--wmtc-color")).toBe("#F48FB1");
+	});
+
+	test("a city's card links to the whole country when there's more there", async () => {
+		const m = await mount();
+		data(m, withPorto());
+		const lisbon = m.pinPoints.find((p) => p.key === "lisbon|PT");
+		click(document.querySelector(".wmtc-svg"), { clientX: lisbon.x, clientY: lisbon.y });
+		expect(text(".wmtc-detail-title")).toBe("Lisbon, Portugal");
+		click(document.querySelector(".wmtc-detail-all"));
+		expect(text(".wmtc-detail-title")).toBe("Portugal");
+		expect(text(".wmtc-detail-facts li")).toBe("2 trips · 2 cities · 7 days in total");
+		// Reykjavík is all there is of Iceland: no link.
+		const rey = m.pinPoints.find((p) => p.key === "reykjavik|IS");
+		click(document.querySelector(".wmtc-svg"), { clientX: rey.x, clientY: rey.y });
+		expect(text(".wmtc-detail-title")).toBe("Reykjavík, Iceland");
+		expect(document.querySelector(".wmtc-detail-all")).toBeNull();
+	});
+
+	test("tapping a place in the ledger opens its card; the page number turns the page", async () => {
+		const m = await mount({ ledger: { rows: 1, columns: 2 } });
+		data(m, build([...trips, trip({ id: "pt0", city: "", country: "PT", date: "2020-01" })]));
+		expect(m.pageCount).toBe(2);
+		click(document.querySelector(".wmtc-cell[data-trip='lis'] .wmtc-place"));
+		expect(text(".wmtc-detail-title")).toBe("Lisbon, Portugal");
+		expect(m.page).toBe(0);
+		click(document.querySelector(".wmtc-page"));
+		expect(m.page).toBe(1);
+		expect(document.querySelector(".wmtc-detail")).toBeNull(); // a tap outside the card closes it
+		// A country-only trip opens the country.
+		click(document.querySelector(".wmtc-cell[data-trip='pt0']"));
+		expect(text(".wmtc-detail-title")).toBe("Portugal");
+		// With details off, the whole ledger turns pages as before.
+		const off = await mount({ details: false, ledger: { rows: 1, columns: 2 } });
+		data(off, build([...trips, trip({ id: "pt0", city: "", country: "PT", date: "2020-01" })]));
+		click(document.querySelector(".wmtc-cell"));
+		expect(off.page).toBe(1);
+	});
+
+	test("the editor's address only wraps after a \"/\"; a blocked mirror shows its own address", async () => {
+		const m = await mount();
+		data(m, { ...build([]), problems: [] });
+		const url = "http://192.168.1.20:8080/MMM-WorldMapTravelCollector/";
+		m.socketNotificationReceived("WMTC_EDITOR", { identifier: m.identifier, editor: { url, reachable: true, reason: "", qr: { size: 21, d: "M0 0h1v1h-1z" } } });
+		const box = document.querySelector(".wmtc-start-url");
+		expect(box.textContent).toBe(url);
+		expect(box.querySelectorAll("wbr")).toHaveLength(1); // after "8080/", not inside "http://"
+		m.socketNotificationReceived("WMTC_EDITOR", { identifier: m.identifier, editor: { url, reachable: false, reason: "whitelist", qr: null } });
+		expect($$(".wmtc-start-help").map((e) => e.textContent).at(-1)).toBe("This mirror's address: 192.168.1.20");
 	});
 });

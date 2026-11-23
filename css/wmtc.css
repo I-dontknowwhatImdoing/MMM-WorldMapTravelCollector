@@ -117,8 +117,9 @@
 
 .wmtc-chip-active {
 	color: var(--wmtc-text);
-	border-color: var(--wmtc-muted);
-	background: rgba(255, 255, 255, 0.07);
+	border-color: var(--wmtc-text);
+	background: rgba(255, 255, 255, 0.16);
+	font-weight: 600;
 }
 
 .wmtc-legend {
@@ -258,6 +259,13 @@
 	color: var(--wmtc-muted);
 }
 
+/* The view the numbers are for, when it isn't "All" */
+.wmtc-stat-view {
+	color: var(--wmtc-color, var(--wmtc-text));
+	font-weight: 600;
+	margin-right: -0.8em; /* sits closer to its first number than the stats sit to each other */
+}
+
 .wmtc-stat-value {
 	color: var(--wmtc-text);
 	font-weight: 600;
@@ -346,6 +354,7 @@
 
 .wmtc-page {
 	position: absolute;
+	padding: 0.4em 0 0.4em 1.5em; /* a bigger target: tapping it turns the page */
 	right: 0;
 	bottom: -1.5em;
 	font-size: 0.7em;
@@ -354,6 +363,7 @@
 
 .wmtc-footer {
 	min-height: 0;
+	padding-top: 0.9em; /* room for the ledger's page number above it */
 	font-size: 0.7em;
 	color: var(--wmtc-muted);
 	text-align: right;
@@ -604,6 +614,20 @@
 	color: var(--wmtc-muted);
 }
 
+.wmtc-detail-all {
+	display: block;
+	margin-top: 0.5em;
+	padding: 0.35em 0;
+	border: 0;
+	background: none;
+	color: var(--wmtc-text);
+	font: inherit;
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+	cursor: pointer;
+}
+
 .wmtc-detail-more {
 	margin-top: 0.3em;
 	color: var(--wmtc-muted);
@@ -736,7 +760,7 @@
 .wmtc-start-corner {
 	left: 0.3em;
 	bottom: 0.3em;
-	max-width: min(24em, calc(100% - 1em));
+	max-width: min(32em, calc(100% - 1em));
 	padding: 0.6em 0.8em;
 	font-size: 0.72em;
 }
@@ -764,10 +788,18 @@
 	line-height: 1.35;
 }
 
+.wmtc-start-text {
+	min-width: 0;
+}
+
+.wmtc-nowrap {
+	white-space: nowrap;
+}
+
 .wmtc-start-url {
 	margin-top: 0.4em;
 	font-weight: 600;
-	overflow-wrap: anywhere;
+	overflow-wrap: break-word; /* breaks fall after a "/" (see urlLines); mid-word only if a piece is wider than the card */
 }
 
 .wmtc-theme-analog .wmtc-start {

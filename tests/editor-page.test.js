@@ -167,6 +167,18 @@ test("B3: the column-matching panel shows a drop-down per column", async () => {
 	expect([...panel.querySelectorAll("span")].map((s) => s.textContent)).toEqual(["Stadt", "Land", "Datum", "Personen"]);
 });
 
+test("a page that was replaced doesn't send its pending import check", async () => {
+	uploadResult = { kind: "timeline", label: "Google Maps Timeline", alsoFound: [], warnings: [], visits: 1, ignoredAtHome: 0, home: null, drafts: [{ city: "Lisbon", country: "PT", date: "2025-03", start: "", days: "", travelers: ["Alex"], lat: "", lon: "", note: "", hint: "", include: true }] };
+	tab("import");
+	const input = $("input[type=file]");
+	Object.defineProperty(input, "files", { value: [{ name: "Timeline.json", arrayBuffer: async () => new ArrayBuffer(2) }] });
+	input.dispatchEvent(new Event("change"));
+	for (let i = 0; i < 40 && !$(".draft"); i++) await flush();
+	document.body.innerHTML = BODY; // the next page (as each test starts with)
+	await wait(400);
+	expect(requests.filter((r) => r.url.includes("import/check"))).toEqual([]);
+});
+
 describe("R6: errors where you look", () => {
 	test("each error shows under its field; the first is focused", async () => {
 		serve = (url, method) => (method === "POST" && url.endsWith("api/trips") ? { status: 422, body: { errors: ["Country is missing", "Date is missing", "No travelers listed", "Something odd"] } } : undefined);
@@ -224,7 +236,7 @@ describe("R8: back, undo and repeat", () => {
 		expect(undo.textContent).toBe("Undo");
 		undo.click();
 		await flush();
-		expect(requests.filter((r) => r.method === "POST").at(-1).body).toMatchObject({ city: "Kyoto", country: "JP", date: "2024-10", travelers: ["Alex"] });
+		expect(requests.filter((r) => r.method === "POST" && r.url === "api/trips").at(-1).body).toMatchObject({ city: "Kyoto", country: "JP", date: "2024-10", travelers: ["Alex"] });
 	});
 
 	test("the phone's Back button returns to the previous editor screen", async () => {
@@ -402,5 +414,94 @@ describe("E7: backups", () => {
 		await flush();
 		await flush();
 		expect($("#toast").textContent).toBe("Restored 5 trips, plus 1 row to fix.");
+	});
+});
+
+describe("AI walkthrough fixes (editor)", () => {
+	test("the Import screen has no stray \"null\"", () => {
+		tab("import");
+		expect($("main").textContent).not.toContain("null");
+		expect($("main").firstElementChild.textContent).toContain("Whose trips are these?");
+	});
+
+	test("a trip the mirror can't show: plain words, and \"Did you mean\" is a button by the city", () => {
+		expect($(".notice strong").textContent).toBe("1 trip can't be shown on the mirror.");
+		$$(".row").find((r) => r.textContent.includes("Lisbn")).click();
+		expect($(".notice").textContent).toBe("This trip can't be shown on the mirror yet. What's wrong is marked below.");
+		const idea = $(".did-you-mean button");
+		expect(idea.textContent).toBe("Lisbon");
+		idea.click();
+		expect($("input[placeholder='e.g. Lisbon']").value).toBe("Lisbon");
+	});
+
+	test("the no-PIN note talks to whoever set up the mirror", () => {
+		expect($$(".notice").map((n) => n.textContent).find((t) => t.startsWith("Anyone"))).toBe("Anyone on your Wi-Fi can open this page and change your trips. Whoever set up the mirror can make it ask for a PIN (editorPin in the module's README). Got it");
+	});
+
+	test("after saving a changed trip, the old search word is cleared", async () => {
+		type($("input[type=search]"), "Paris");
+		$$(".row").find((r) => r.textContent.includes("Paris")).click();
+		type($("input[placeholder='e.g. Lisbon']"), "Dallas");
+		await submit();
+		await flush();
+		expect($("input[type=search]").value).toBe("");
+	});
+
+	test("Undo stays up for 15 seconds", async () => {
+		jest.useFakeTimers();
+		try {
+			$$(".row").find((r) => r.textContent.includes("Kyoto")).click();
+			$$("button").find((b) => b.textContent === "Delete this trip").click();
+			await jest.advanceTimersByTimeAsync(10);
+			expect($("#toast").hidden).toBe(false);
+			await jest.advanceTimersByTimeAsync(10000);
+			expect($("#toast .toast-action").textContent).toBe("Undo");
+			expect($("#toast").hidden).toBe(false);
+			await jest.advanceTimersByTimeAsync(6000);
+			expect($("#toast").hidden).toBe(true);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("backups say what changed", async () => {
+		serve = (url, method) => (url.includes("api/backups") && method === "GET"
+			? { status: 200, body: { backups: [{ name: "trips-a.json", savedAt: "2026-11-23T10:00:00.000Z", trips: 5, note: "Before deleting Cusco, Nov 2019" }] } }
+			: undefined);
+		tab("more");
+		await flush();
+		await flush();
+		expect($(".list .row-title").textContent).toBe("Before deleting Cusco, Nov 2019");
+		expect($(".list .row-sub").textContent).toMatch(/^.+ · 5 trips · 1 more than now$/);
+	});
+});
+
+describe("AI walkthrough fixes (import)", () => {
+	const draft = (o) => ({ city: "Lisbon", country: "PT", date: "2025-03", start: "", days: "", travelers: ["Alex"], lat: "", lon: "", note: "", hint: "", include: true, ...o });
+
+	test("rows already there start unticked, so the ticks match what Save does; ticking one again sticks", async () => {
+		uploadResult = { kind: "timeline", label: "Google Maps Timeline", alsoFound: [], warnings: [], visits: 2, ignoredAtHome: 0, home: null, drafts: [draft({}), draft({ city: "Porto" })] };
+		serve = (url, method, body) => {
+			if (!url.includes("import/check")) return undefined;
+			const results = body.rows.map((r) => (r.city === "Lisbon" ? { ok: true, trip: {}, combinesWith: { travelers: ["Alex"] }, adds: [] } : { ok: true, trip: {}, combinesWith: null }));
+			return { status: 200, body: { results } };
+		};
+		tab("import");
+		const input = $("input[type=file]");
+		Object.defineProperty(input, "files", { value: [{ name: "Timeline.json", arrayBuffer: async () => new ArrayBuffer(2) }] });
+		input.dispatchEvent(new Event("change"));
+		for (let i = 0; i < 40 && !$(".draft"); i++) await flush();
+		await wait(400);
+		await flush();
+		const boxes = $$(".draft-head input[type=checkbox]");
+		expect(boxes.map((b) => b.checked)).toEqual([false, true]);
+		expect($$(".draft .status")[0].textContent).toBe("Already there, nothing changes");
+		expect($(".save-import").textContent).toBe("Save 1 trip");
+		expect($(".save-note").textContent).toBe("1 is already there.");
+		boxes[0].click();
+		await wait(400);
+		await flush();
+		expect($$(".draft-head input[type=checkbox]")[0].checked).toBe(true);
+		expect($(".save-note").textContent).toBe("1 is already there.");
 	});
 });

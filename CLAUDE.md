@@ -20,7 +20,7 @@ A MagicMirror² module: a world map of trips (countries shaded, cities pinned) w
 - Getting started (`showEditorLink`): `lib/editor-link.js` works out the editor's address and whether MagicMirror's `address`/`ipWhitelist` let phones in; `node_helper` sends it with a QR path as `WMTC_EDITOR`. MagicMirror's logger already prefixes the module name.
 - Mirror drawing: `renderMap` keeps the country outlines (`mapBase`, keyed by size/projection/theme) and only recolors them on a view switch. Taps pick the nearest pin (`pinPoints`), else the country (`data-code`); `WMTCLedger.placeDetails` builds the card.
 - Colors: `colorBy` travelers | year | month | season. Month palette is checked for color blindness (test in `tests/layout.test.js`). Fade by age scales opacity through `--wmtc-fade` (`WMTCLayout.fadeFactor`); planned trips never fade.
-- Ledger: `rows: "auto"` (5, up to 30 on tall screens when there are trips for them) × 4 columns, newest first, overflow `cycle` or `shrink`.
+- Ledger: `rows: "auto"` (5, up to 30 on tall screens when there are trips for them) × `columns: "auto"` (4, or 2 on a portrait screen), newest first, overflow `cycle` or `shrink`.
 
 ## Working in this repo
 

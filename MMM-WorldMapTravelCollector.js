@@ -69,7 +69,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		ledger: {
 			enabled: true,
 			rows: "auto", // a number, or "auto": 5, and more on tall screens when there are trips to fill them
-			columns: 4,
+			columns: "auto", // a number, or "auto": 4 on a wide screen, 2 on a tall (portrait) one
 			sort: "newest", // "newest" (most recent first) | "oldest" (first trip first) | "alpha" (A–Z by city)
 			overflow: "cycle", // "cycle" | "shrink"
 			pageInterval: 15, // seconds, for "cycle"
@@ -314,7 +314,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.mapEl.addEventListener("click", (e) => this.onMapClick(e));
 		this.statsEl = el("div", "wmtc-stats");
 		this.ledgerEl = el("div", "wmtc-ledger");
-		this.ledgerEl.addEventListener("click", () => this.turnPage());
+		// A tap on a place opens its card; anywhere else on the ledger (the page number) turns the page.
+		this.ledgerEl.addEventListener("click", (e) => {
+			const cell = this.config.details && e.target && e.target.closest ? e.target.closest(".wmtc-cell[data-trip]") : null;
+			if (cell) this.showTripPlace(cell.getAttribute("data-trip"));
+			else this.turnPage();
+		});
 		this.bodyEl.append(this.mapEl, this.statsEl, this.ledgerEl);
 
 		this.footerEl = el("div", "wmtc-footer");
@@ -533,6 +538,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.statsEl.textContent = "";
 		const parts = this.config.showStats && view ? WMTCLedger.statParts(view.stats, this.config.stats, this.locale) : [];
 		this.statsEl.hidden = parts.length === 0 || !view.tripIds.length;
+		// The numbers follow the view on screen, so say which one when it isn't everything ("Alex only: 3 countries").
+		if (parts.length && view.id !== "all" && this.model.views.length > 1) {
+			const label = el("span", "wmtc-stat-view", `${this.viewLabel(view)}:`);
+			const color = this.viewColor(view.id);
+			if (color) label.style.setProperty("--wmtc-color", color);
+			this.statsEl.append(label);
+		}
 		for (const p of parts) {
 			const item = el("span", `wmtc-stat wmtc-stat-${p.key}`);
 			if (p.before) item.append(document.createTextNode(`${p.before} `));
@@ -556,7 +568,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.pageCount = 1;
 		if (!trips.length) return;
 
-		const columns = Math.max(1, Math.floor(l.columns) || 1);
+		const columns = this.ledgerColumns();
 		const baseFont = Math.round(this.scale.fontSize * 0.78 * 10) / 10;
 		const rows = this.ledgerRows(trips.length, columns, baseFont);
 		let pageTrips;
@@ -590,6 +602,14 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (this.pageCount > 1) this.ledgerEl.append(el("div", "wmtc-page", `${this.page + 1} / ${this.pageCount}`));
 	},
 
+	/** Columns in the ledger: a number as it is; "auto" is 4, or 2 on a tall screen so names fit. */
+	ledgerColumns () {
+		const wanted = this.config.ledger.columns;
+		if (wanted !== "auto") return Math.max(1, Math.floor(wanted) || 1);
+		const box = this.wrapper ? this.wrapper.getBoundingClientRect() : null;
+		return box && box.height > box.width ? 2 : 4;
+	},
+
 	/**
 	 * Rows in the ledger. A number is used as it is. "auto" is 5, or more when there's room under the map
 	 * (portrait mirrors) and trips to fill it, up to 30; the map keeps its full size either way.
@@ -615,6 +635,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const l = this.config.ledger;
 		const text = WMTCLedger.cellText(trip, { showCountry: l.showCountry, showDays: l.showDays, dateFormat: l.dateFormat, locale: this.locale });
 		const cell = el("div", "wmtc-cell");
+		cell.setAttribute("data-trip", trip.id);
 		if (trip.planned) cell.classList.add("wmtc-cell-planned");
 		if (isNewest) cell.classList.add("wmtc-cell-newest");
 		const groupColor = WMTCLayout.colorFor(trip.group, this.colors);
@@ -646,7 +667,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const rows = problems.filter((p) => !p || p.row !== 0).length;
 		let message = "";
 		if (fileLevel) message = `${fileLevel.source}: ${(fileLevel.errors || [])[0] || "couldn't be read"}`;
-		else if (rows) message = `${rows} row${rows === 1 ? "" : "s"} skipped. Open the trip editor to see why.`;
+		else if (rows) message = `${rows} trip${rows === 1 ? "" : "s"} can't be shown. Open the trip editor to see why.`;
 		this.footerEl.textContent = this.config.showProblems ? message : "";
 	},
 
@@ -673,6 +694,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (!target) return;
 		if (target.closest(".wmtc-detail")) {
 			if (target.closest(".wmtc-detail-close")) this.closeDetails();
+			const all = target.closest(".wmtc-detail-all");
+			if (all) this.showCountry(all.getAttribute("data-code"), this.detailPoint);
 			return;
 		}
 		const view = this.currentView();
@@ -680,11 +703,40 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const countryEl = pinKey ? null : target.closest("[data-code]");
 		const pin = pinKey && view ? view.pins.find((p) => p.key === pinKey) : null;
 		const country = countryEl && view ? view.countries[countryEl.getAttribute("data-code")] : null;
-		if (pin) {
-			const visible = [...this.mapEl.querySelectorAll(".wmtc-pin")].find((c) => c.getAttribute("data-pin") === pin.key);
-			this.showDetails("pin", pin.tripIds, e, visible);
-		} else if (country) this.showDetails("country", country.tripIds, e, countryEl);
+		if (pin) this.showPin(pin, e);
+		else if (country) this.showDetails("country", country.tripIds, e, countryEl);
 		else this.closeDetails();
+	},
+
+	/** A city's card. Small countries are hard to tap, so it links to the whole country when there's more there. */
+	showPin (pin, point) {
+		const visible = [...this.mapEl.querySelectorAll(".wmtc-pin")].find((c) => c.getAttribute("data-pin") === pin.key);
+		const view = this.currentView();
+		const country = view && view.countries[pin.country];
+		const more = country && country.tripIds.some((id) => !pin.tripIds.includes(id) && this.model.trips[id] && (this.config.showPlanned || !this.model.trips[id].planned));
+		this.showDetails("pin", pin.tripIds, point, visible, more ? pin.country : null);
+	},
+
+	showCountry (code, point) {
+		const view = this.currentView();
+		const country = view && view.countries[code];
+		if (!country) return;
+		const path = this.mapEl.querySelector(`.wmtc-country[data-code="${code}"]`);
+		this.showDetails("country", country.tripIds, point, path);
+	},
+
+	/** A tap on a place in the ledger opens that place's card on the map. */
+	showTripPlace (tripId) {
+		const view = this.currentView();
+		const trip = this.model && this.model.trips[tripId];
+		if (!view || !trip) return;
+		const box = this.mapEl.getBoundingClientRect();
+		const pin = view.pins.find((p) => p.tripIds.includes(tripId));
+		const spot = pin && this.pinPoints ? this.pinPoints.find((p) => p.key === pin.key) : null;
+		if (pin && spot) return this.showPin(pin, { clientX: box.left + spot.x, clientY: box.top + spot.y });
+		const path = this.mapEl.querySelector(`.wmtc-country[data-code="${trip.country}"]`);
+		const r = path ? path.getBoundingClientRect() : null;
+		this.showCountry(trip.country, r && r.width ? { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 } : null);
 	},
 
 	/** The pin closest to a tap, if one is within finger reach. */
@@ -706,7 +758,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 	},
 
 	/** Open the card for a place, next to where it was tapped. */
-	showDetails (kind, tripIds, point, selectedEl) {
+	showDetails (kind, tripIds, point, selectedEl, countryLink) {
 		this.closeDetails();
 		if (!this.model) return;
 		const trips = (tripIds || []).map((id) => this.model.trips[id]).filter((t) => t && (this.config.showPlanned || !t.planned));
@@ -736,6 +788,14 @@ Module.register("MMM-WorldMapTravelCollector", {
 		}
 		card.append(visits);
 		if (d.more) card.append(el("div", "wmtc-detail-more", `+${d.more} more`));
+		if (countryLink) {
+			const name = trips[0].countryName || countryLink;
+			const all = el("button", "wmtc-detail-all", `See all of ${name} \u203a`);
+			all.type = "button";
+			all.setAttribute("data-code", countryLink);
+			card.append(all);
+		}
+		this.detailPoint = point && Number.isFinite(point.clientX) ? { clientX: point.clientX, clientY: point.clientY } : null;
 		this.mapEl.append(card);
 		this.detailEl = card;
 
@@ -943,11 +1003,14 @@ Module.register("MMM-WorldMapTravelCollector", {
 		words.append(el("div", "wmtc-start-title", "Add trips from your phone"));
 		if (link.reachable) {
 			words.append(el("div", "wmtc-start-help", mode === "full" ? "Scan the code, or open this address on a phone on the same Wi-Fi:" : "Scan the code, or open:"));
-			words.append(el("div", "wmtc-start-url", link.url));
+			words.append(urlLines(link.url));
 		} else {
 			words.append(el("div", "wmtc-start-help", link.reason === "network"
 				? "The mirror isn't connected to a network, so phones can't open the trip editor yet."
 				: "Phones can't open the trip editor yet: MagicMirror only lets the mirror itself in. See \u201cOpening the editor from your phone\u201d in this module's README."));
+			// Its address tells the person setting up which home network to let in (192.168.1.20 → 192.168.1.0).
+			const host = link.url && /^https?:\/\/([^/:]+|\[[^\]]+\])/.exec(link.url);
+			if (host && link.reason !== "network") words.append(el("div", "wmtc-start-help", `This mirror's address: ${host[1]}`));
 		}
 		card.append(words);
 		if (mode === "full") this.setMessage("");
@@ -955,6 +1018,16 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.startEl = card;
 	}
 });
+
+/** An address that may wrap, but only after a "/" (never in the middle of a word). */
+function urlLines (url) {
+	const box = el("div", "wmtc-start-url");
+	String(url).split(/(?<=[^:/]\/)/).forEach((part, i) => {
+		if (i) box.append(document.createElement("wbr"));
+		box.append(el("span", "wmtc-nowrap", part)); // no break at the "-" in "MMM-World…"
+	});
+	return box;
+}
 
 /** How long "auto" shows the editor's address after a start. */
 const EDITOR_CARD_MS = 10 * 60 * 1000;

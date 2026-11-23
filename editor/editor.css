@@ -242,6 +242,11 @@ p {
 	white-space: nowrap;
 }
 
+/* Backup labels ("Before deleting Cusco, Nov 2019") are read in full */
+.row-title.wrap {
+	white-space: normal;
+}
+
 .row-sub {
 	font-size: 0.85rem;
 	color: var(--muted);

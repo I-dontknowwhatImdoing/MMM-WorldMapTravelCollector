@@ -14,6 +14,11 @@
 	const longMonths = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2000, i, 15)));
 	const main = document.getElementById("main");
 
+	/** Replace the page content. Leaves out empty slots (null, false): the browser would print "null". */
+	function show (...children) {
+		main.replaceChildren(...children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false));
+	}
+
 	/* ---------- small helpers ---------- */
 
 	/** Build an element. Text always goes in as text, never as HTML. */
@@ -59,7 +64,8 @@
 		t.className = bad ? "toast bad" : "toast";
 		t.hidden = false;
 		clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => (t.hidden = true), action ? 6000 : bad ? 6000 : 3500);
+		// An Undo stays long enough to notice and reach for (people miss a 6-second one).
+		toastTimer = setTimeout(() => (t.hidden = true), action ? 15000 : bad ? 6000 : 3500);
 	}
 
 	/**
@@ -234,12 +240,12 @@
 		status,
 		h("label", { class: "field" }, h("span", { text: "PIN" }), input),
 		button);
-		main.replaceChildren(form);
+		show(form);
 		if (!input.disabled) input.focus();
 	}
 
 	function failed (err) {
-		main.replaceChildren(h("div", { class: "notice bad" }, h("strong", { text: "Something went wrong. " }), err.message),
+		show(h("div", { class: "notice bad" }, h("strong", { text: "Something went wrong. " }), err.message),
 			h("button", { class: "btn", text: "Try again", onclick: start }));
 	}
 
@@ -314,8 +320,8 @@
 		}
 		if (!d.pinRequired && !storage("wmtc-pin-note-seen")) {
 			const note = h("div", { class: "notice" },
-				"Anyone on your Wi-Fi can open this page and change your trips. To ask for a PIN, add ",
-				h("code", { text: "editorPin: \"1234\"" }), " (your own number) to the module in the mirror's config. ",
+				"Anyone on your Wi-Fi can open this page and change your trips. Whoever set up the mirror can make it ask for a PIN (",
+				h("code", { text: "editorPin" }), " in the module's README). ",
 				h("button", { type: "button", class: "btn link inline", text: "Got it", onclick: () => {
 					storage("wmtc-pin-note-seen", "1");
 					note.remove();
@@ -324,8 +330,8 @@
 		}
 		if (d.broken.length) {
 			out.push(h("div", { class: "notice" },
-				h("strong", { text: `${d.broken.length} row${d.broken.length === 1 ? "" : "s"} in trips.json can't be shown on the mirror.` }),
-				" Tap one to fix it."));
+				h("strong", { text: `${d.broken.length} trip${d.broken.length === 1 ? "" : "s"} can't be shown on the mirror.` }),
+				d.broken.length === 1 ? " Tap it to fix it." : " Tap one to fix it."));
 			out.push(h("div", { class: "list" }, d.broken.map((b) => h("button", { class: "row", type: "button", onclick: () => editTrip(null, b) },
 				h("span", { class: "dots" }, h("span", { class: "badge warn", text: "!" })),
 				h("span", { class: "row-main" },
@@ -369,7 +375,7 @@
 			}
 			out.push(h("div", { "data-source": src.source }, tripGroups(src.trips.filter(matches), true)));
 		}
-		main.replaceChildren(...out);
+		show(...out);
 	}
 
 	async function moveCsv (button) {
@@ -563,7 +569,7 @@
 		const slots = { country: slot(), city: slot(), when: slot(), who: slot(), days: slot(), spot: slot() };
 		const general = h("ul", { class: "errors", hidden: true, role: "alert" });
 		const inputs = {};
-		const showErrors = (list) => {
+		const showErrors = (list, opts = {}) => {
 			for (const el of Object.values(slots)) {
 				el.replaceChildren();
 				el.hidden = true;
@@ -584,7 +590,7 @@
 				target.hidden = false;
 				if (!first) first = field || "general";
 			}
-			if (first) {
+			if (first && opts.scroll !== false) {
 				const el = first === "general" ? general : slots[first];
 				el.scrollIntoView({ behavior: "smooth", block: "center" });
 				if (inputs[first]) inputs[first].focus({ preventScroll: true });
@@ -686,6 +692,8 @@
 				if (editing) {
 					S.formDraft = null;
 					S.editing = null;
+					// The old search word ("Chicago") would hide the trip just renamed ("Milwaukee").
+					S.search = "";
 					setTab("trips", { replace: true });
 				} else {
 					// Ready for the next place on the same trip: same country, month and people.
@@ -707,7 +715,7 @@
 				S.lastAdded = null;
 				render();
 			} }), ".") : null,
-		editing && editing.broken ? h("div", { class: "notice" }, h("strong", { text: "This row can't be shown on the mirror: " }), editing.errors.join(". ")) : null,
+		editing && editing.broken ? h("div", { class: "notice" }, h("strong", { text: "This trip can't be shown on the mirror yet." }), " What's wrong is marked below.") : null,
 		general,
 		countries,
 		h("label", { class: "field" }, h("span", { text: "Country" }), country, slots.country),
@@ -757,7 +765,9 @@
 				if (!err.quiet) showErrors([err.message]);
 			}
 		} })) : null);
-		main.replaceChildren(form);
+		show(form);
+		// A trip the mirror can't show: put its problems next to their fields, with "Did you mean" buttons.
+		if (editing && editing.broken) showErrors(editing.errors, { scroll: false });
 	}
 
 	/** "25k people", "1.3M people" */
@@ -853,7 +863,8 @@
 		clearTimeout(checkTimer);
 		checkTimer = setTimeout(async () => {
 			const imp = S.imp;
-			if (!imp || !imp.result) return;
+			// Nothing to check once the page has been replaced (or the review closed) in the meantime.
+			if (!imp || !imp.result || !main.isConnected) return;
 			const ticked = imp.result.drafts.map((d, i) => [d, i]).filter(([d]) => d.include);
 			try {
 				const r = await api("POST", "/import/check", { rows: ticked.map(([d]) => draftBody(d)) });
@@ -893,6 +904,7 @@
 			const el = main.querySelector(`[data-draft="${i}"] .status`);
 			const c = imp.checks[i];
 			if (!d.include) {
+				if (d.already) already++;
 				if (el) {
 					el.className = "status info";
 					el.textContent = d.hint || "Won't be imported";
@@ -900,7 +912,26 @@
 				return;
 			}
 			if (!c) return;
-			// A row whose trip is already there, with the same people, changes nothing.
+			// A row whose trip is already there, with the same people, changes nothing: untick it (once; a row
+			// someone ticks again stays ticked), so the ticks match what Save will do.
+			if (c.ok && c.combinesWith && !(c.adds || []).length && !d.touched) {
+				d.include = false;
+				d.already = true;
+				d.hint = d.hint ? `Already there, nothing changes · ${d.hint}` : "Already there, nothing changes";
+				const card = main.querySelector(`[data-draft="${i}"]`);
+				if (card) {
+					card.classList.add("off");
+					const box = card.querySelector(".draft-head input[type=checkbox]");
+					if (box) box.checked = false;
+				}
+				if (el) {
+					el.className = "status info";
+					el.textContent = d.hint;
+				}
+				already++;
+				return;
+			}
+			if (d.already && d.include) d.already = false;
 			if (c.ok && c.combinesWith && !(c.adds || []).length) already++;
 			else if (c.ok) good++;
 			else problems.push(c.errors);
@@ -939,7 +970,7 @@
 		const input = h("input", { type: "file", multiple: true, accept: ".csv,.tsv,.txt,.json,.geojson,.kml,.kmz,.zip" });
 		input.addEventListener("change", () => input.files.length && parseFiles([...input.files], { want: undefined, mapping: undefined }));
 		const who = imp && imp.who ? imp.who : [];
-		main.replaceChildren(
+		show(
 			imp && imp.error ? h("div", { class: "notice bad", text: imp.error }) : null,
 			h("div", { class: "card" },
 				h("h2", { text: "Whose trips are these?" }),
@@ -973,7 +1004,7 @@
 
 	function renderImportBusy () {
 		const p = S.imp.progress || 0;
-		main.replaceChildren(h("div", { class: "card" },
+		show(h("div", { class: "card" },
 			h("h2", { text: S.imp.files.map((f) => f.name).join(", ") }),
 			h("div", { class: "progress" }, h("div", { style: { width: `${Math.round(p * 100)}%` } })),
 			h("p", { class: "muted progress-label", text: p < 1 ? `Uploading… ${Math.round(p * 100)}%` : "Reading the file…" })));
@@ -1068,12 +1099,15 @@
 				renderImport();
 			} })),
 			h("p", { class: "small save-note", "aria-live": "polite" })));
-		main.replaceChildren(...out);
+		show(...out);
 		if (imp.checks && imp.checks.length) paintChecks();
 	}
 
 	function tickAll (on) {
-		for (const d of S.imp.result.drafts) d.include = on;
+		for (const d of S.imp.result.drafts) {
+			d.include = on;
+			d.touched = true;
+		}
 		renderReview();
 		check();
 	}
@@ -1084,6 +1118,7 @@
 		const card = h("div", { class: d.include ? "draft" : "draft off", "data-draft": String(i) });
 		box.addEventListener("change", () => {
 			d.include = box.checked;
+			d.touched = true;
 			card.classList.toggle("off", !d.include);
 			changed();
 		});
@@ -1150,7 +1185,7 @@
 
 	function renderImportDone () {
 		const s = S.imp.saved;
-		main.replaceChildren(h("div", { class: "card" },
+		show(h("div", { class: "card" },
 			h("h2", { text: "Imported" }),
 			h("p", { text: [
 				`${s.added} new trip${s.added === 1 ? "" : "s"} added`,
@@ -1226,16 +1261,16 @@
 		out.push(h("h2", { text: "Backups" }),
 			h("p", { class: "muted small", text: "Every save keeps a copy of the list from before, up to the last 10. Restoring one keeps a copy of the current list too." }),
 			backups);
-		main.replaceChildren(...out);
+		show(...out);
 		try {
 			const r = await api("GET", "/backups");
 			if (S.tab !== "more") return;
 			backups.replaceChildren(...(r.backups.length ? r.backups.map((b) => h("div", { class: "row locked" },
 				h("span", { class: "row-main" },
-					h("div", { class: "row-title", text: b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name }),
-					h("div", { class: "row-sub", text: b.trips === null ? "Can't be read" : backupSummary(b.trips) })),
+					h("div", { class: "row-title wrap", text: b.note || (b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name) }),
+					h("div", { class: "row-sub", text: [b.note && b.savedAt ? new Date(b.savedAt).toLocaleString() : "", b.trips === null ? "Can't be read" : backupSummary(b.trips)].filter(Boolean).join(" · ") })),
 				h("button", { class: "btn", type: "button", text: "Restore", onclick: async () => {
-					if (!confirm(`Put back the list from ${b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name}? Your current list is backed up first.`)) return;
+					if (!confirm(`Put back the list from ${b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name}${b.note ? ` (${b.note.charAt(0).toLowerCase()}${b.note.slice(1)})` : ""}? Your current list is backed up first.`)) return;
 					try {
 						const res = await api("POST", "/backups/restore", { name: b.name });
 						await reload();
@@ -1253,7 +1288,7 @@
 	/* ---------- start ---------- */
 
 	async function start () {
-		main.replaceChildren(h("p", { class: "loading", text: "Loading your trips…" }));
+		show(h("p", { class: "loading", text: "Loading your trips…" }));
 		try {
 			await reload();
 			setTab(S.tab, { replace: true });
