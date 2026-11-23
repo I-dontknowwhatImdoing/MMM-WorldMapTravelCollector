@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### More stats
+
+- Eight more stats to choose from in `stats`: `daysTraveled`, `nextTrip` ("Next: Tokyo in 23 days"), `lastTrip`, `farthest` (from home), `newThisYear` (countries visited for the first time this year), `mostVisited`, `longestTrip` and `usStates`. The default line is the same six as before.
+- The README explains how to write a list of options (square brackets, each item in quotes), lists every stat with an example, and says what each ledger `sort` order means.
+
 ### Settings names, docs and requirements
 
 - `filters` is now called `views`, and `defaultFilter` is `defaultView`. The old names still work. New notification names `WMTC_SET_VIEW` (with `{ view }`), `WMTC_NEXT_VIEW` and `WMTC_PREV_VIEW`; the `*_FILTER` ones still work.

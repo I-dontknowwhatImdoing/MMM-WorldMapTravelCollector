@@ -61,7 +61,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 		// Stats
 		showStats: true,
-		stats: ["countries", "cities", "continents", "worldPercent", "tripsThisYear", "distance"],
+		stats: ["countries", "cities", "continents", "worldPercent", "tripsThisYear", "distance"], // more: "daysTraveled", "nextTrip", "lastTrip", "farthest", "newThisYear", "mostVisited", "longestTrip", "usStates"
 		worldCountryCount: 195,
 		distanceUnits: "km",
 
@@ -535,6 +535,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.statsEl.hidden = parts.length === 0 || !view.tripIds.length;
 		for (const p of parts) {
 			const item = el("span", `wmtc-stat wmtc-stat-${p.key}`);
+			if (p.before) item.append(document.createTextNode(`${p.before} `));
 			item.append(el("span", "wmtc-stat-value", p.value), document.createTextNode(` ${p.label}`));
 			this.statsEl.append(item);
 		}
