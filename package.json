@@ -25,7 +25,8 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "build:geo": "node scripts/build-geo.js",
-    "import": "node scripts/import.js"
+    "import": "node scripts/import.js",
+    "preview": "node scripts/preview.js"
   },
   "jest": {
     "testEnvironment": "node",
@@ -49,6 +50,12 @@
     "globals": "^17.14.0",
     "i18n-iso-countries": "^7.14.0",
     "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
     "world-atlas": "^2.0.2"
+  },
+  "dependencies": {
+    "d3-array": "^3.2.5",
+    "d3-geo": "^3.1.2",
+    "topojson-client": "^3.1.0"
   }
 }
