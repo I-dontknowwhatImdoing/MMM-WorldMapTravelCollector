@@ -97,6 +97,20 @@ function buildCities (meta) {
 	return rows;
 }
 
+/**
+ * One city per line: name, country, lat, lon, population, region, and the normalized name when it isn't
+ * just the name in lower case (so the mirror doesn't work it out for 135,000 names at every start).
+ */
+function citiesTsv (rows) {
+	const clean = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
+	const lines = ["name\tcountry\tlat\tlon\tpopulation\tregion\tnormalized"];
+	for (const [name, country, lat, lon, pop, region] of rows) {
+		const norm = normalizeName(name);
+		lines.push([clean(name), country, lat, lon, pop, region || "", norm === name.toLowerCase() ? "" : norm].join("\t"));
+	}
+	return lines.join("\n") + "\n";
+}
+
 function buildAliases (cityRows) {
 	const source = JSON.parse(fs.readFileSync(path.join(__dirname, "city-aliases.source.json"), "utf8"));
 	const known = new Set(cityRows.map((r) => `${normalizeName(r[0])}|${r[1]}`));
@@ -125,8 +139,7 @@ function main () {
 	fs.writeFileSync(path.join(GEO_DIR, "countries-meta.json"), JSON.stringify(meta));
 	fs.writeFileSync(path.join(GEO_DIR, "countries-50m.json"), JSON.stringify(topo));
 	fs.writeFileSync(path.join(GEO_DIR, "city-aliases.json"), JSON.stringify(aliases, null, 1));
-	const payload = JSON.stringify({ fields: ["name", "country", "lat", "lon", "population", "region?"], rows: cities });
-	fs.writeFileSync(path.join(GEO_DIR, "cities.json.gz"), zlib.gzipSync(payload, { level: 9 }));
+	fs.writeFileSync(path.join(GEO_DIR, "cities.tsv.gz"), zlib.gzipSync(citiesTsv(cities), { level: 9 }));
 
 	console.log(`countries: ${Object.keys(meta).length}, shapes: ${topo.objects.countries.geometries.length} (${unassigned} without a country), cities: ${cities.length}, aliases: ${Object.keys(aliases).length}`);
 }

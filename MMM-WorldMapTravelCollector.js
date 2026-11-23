@@ -9,10 +9,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 	defaults: {
 		travelers: [],
 		togetherColor: "#FFD54F",
-		colorBy: "travelers", // what map colors mean: "travelers" (together / each person) | "year" | "month" (Jan–Dec, by season)
+		colorBy: "travelers", // what map colors mean: "travelers" (together / each person) | "year" | "month" (Jan–Dec) | "season" (winter, spring, summer, autumn)
 		yearColors: "gradient", // colorBy "year": "gradient" (oldest → newest) | "distinct" (a different color each year) | { 2025: "#E57373" }
 		yearGradient: ["#5C6BC0", "#4DB6AC", "#FFD54F"], // gradient colors, oldest year first
 		monthColors: [], // colorBy "month": 12 colors, January first, to replace the seasonal ones
+		seasonColors: [], // colorBy "season": 4 colors, winter first
+		hemisphere: "north", // colorBy "season": "south" makes December summer
 		home: null,
 
 		// Data
@@ -24,6 +26,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		editor: true,
 		editorPin: "",
 		editorHosts: [], // extra names the editor may be opened by, e.g. ["mirror.example.net"]
+		showEditorLink: "auto", // "Add trips from your phone" card with a QR code: "auto" (no trips yet, and 10 minutes after each start) | true (always) | false
 		homeRadiusKm: 50, // Timeline import: visits this close to home aren't trips
 
 		// Look
@@ -31,6 +34,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		maxWidth: "90%",
 		maxHeight: "80%",
 		theme: "digital", // "digital" | "analog"
+		contrast: "normal", // "high": brighter grey text and lines, for dim mirrors
 		projection: "equalEarth", // map shape: "equalEarth" (curved edges) | "naturalEarth" (less curved) | "equirectangular" (flat rectangle) | "mercator"
 		hideAntarctica: true,
 		animations: true,
@@ -46,10 +50,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 		// Views
 		filters: ["all", "together", "solo"],
 		defaultFilter: "all",
+		viewSwitcher: "auto", // "buttons" | "compact" (one ‹ 2025 › button) | "auto" (compact when the buttons don't fit on one line)
 		rotateInterval: 30, // seconds between views; 0 = off
 		touchPause: 120, // seconds rotation pauses after a tap or a command
 		details: true, // tap a pin or a country to see its trips
 		detailsTimeout: 20, // seconds before the details card closes by itself; 0 = stays open
+		detailsNotes: true, // show trip notes on the details card (false keeps them off the mirror)
+		detailsHint: true, // on touch screens, "Tap a place for details" until the first tap
 		labels: {},
 
 		// Stats
@@ -61,7 +68,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		// Ledger
 		ledger: {
 			enabled: true,
-			rows: 5,
+			rows: "auto", // a number, or "auto": 5, and more on tall screens when there are trips to fill them
 			columns: 4,
 			sort: "newest", // "newest" | "oldest" | "alpha"
 			overflow: "cycle", // "cycle" | "shrink"
@@ -105,6 +112,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.theme = this.config.theme === "analog" ? "analog" : "digital";
 		this.colors = WMTCLayout.palette(this.config.travelers, this.config.togetherColor);
 		this.locale = (typeof config !== "undefined" && config && config.language) || (typeof navigator !== "undefined" && navigator.language) || "en";
+		this.startedAt = Date.now();
+		this.editorLink = null;
+		this.hintDone = false;
 		this.loadWorld();
 		this.sendSocketNotification("WMTC_INIT", { identifier: this.identifier, config: this.config });
 	},
@@ -141,6 +151,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 			this.render();
 			// MagicMirror sets `hidden` while the module is hidden; resume() restarts the timers.
 			if (!this.hidden) this.startTimers();
+		} else if (notification === "WMTC_EDITOR") {
+			this.editorLink = payload.editor || null;
+			this.renderEditorCard();
+			// "auto": the card goes away 10 minutes after the start, unless there are still no trips.
+			clearTimeout(this.cardTimer);
+			const left = this.startedAt + EDITOR_CARD_MS - Date.now();
+			if (left > 0) this.cardTimer = setTimeout(() => this.renderEditorCard(), left + 50);
 		} else if (notification === "WMTC_ERROR") {
 			this.error = payload.message;
 			this.render();
@@ -271,6 +288,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const c = this.config;
 		const w = el("div", `wmtc wmtc-theme-${this.theme} wmtc-layout-${c.layout === "centered" ? "centered" : "fullscreen"}`);
 		if (!c.animations) w.classList.add("wmtc-no-motion");
+		if (c.contrast === "high") w.classList.add("wmtc-contrast-high");
 		if (c.layout === "centered") {
 			w.style.width = WMTCLayout.cssSize(c.maxWidth, "width", "90vw");
 			w.style.height = WMTCLayout.cssSize(c.maxHeight, "height", "80vh");
@@ -321,42 +339,100 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.renderLedger();
 		this.renderFooter();
 		this.renderMap();
+		this.renderEditorCard();
 	},
 
 	/** View chips double as the color key: tap one to switch views. */
 	renderChips (view) {
 		this.chipsEl.textContent = "";
 		this.legendEl.textContent = "";
+		this.compactSwitcher = false;
 		if (!this.model || !this.config.showLegend) return;
 		const views = this.model.views;
 		if (views.length > 1) {
-			views.forEach((v, i) => {
-				const chip = el("button", i === this.viewIndex ? "wmtc-chip wmtc-chip-active" : "wmtc-chip");
-				chip.type = "button";
-				const color = this.viewColor(v.id);
-				if (color) {
-					const dot = el("span", "wmtc-dot");
-					dot.style.setProperty("--wmtc-color", color);
-					chip.append(dot);
-				}
-				chip.append(document.createTextNode(this.viewLabel(v)));
-				chip.addEventListener("click", (e) => {
-					e.stopPropagation();
-					this.setView(i, true);
-					this.pause();
-				});
-				this.chipsEl.append(chip);
-			});
+			const mode = this.config.viewSwitcher;
+			if (mode !== "compact") this.renderChipButtons(views);
+			// Many views (one per year) wrap onto more lines and squeeze the map: show one ‹ 2025 › button instead.
+			if (mode === "compact" || (mode !== "buttons" && this.chipsWrap())) {
+				this.chipsEl.textContent = "";
+				this.renderSwitcher(views);
+				this.compactSwitcher = true;
+			}
 		} else if (view && this.colorBy() === "travelers") {
 			// One traveler: a plain key of who's who.
 			for (const name of this.model.travelers) this.legendEl.append(legendItem(name, this.colors.byName[name]));
 		}
-		// Year (or month) chips already show their colors; only add a key when they don't.
+		// Year (or month) buttons already show their colors; only add a key when they don't.
 		const by = this.colorBy();
-		const chipsAreKey = views.length > 1 && views.some((v) => v.id.startsWith(by === "year" ? "year:" : "month:"));
+		const chipsAreKey = !this.compactSwitcher && views.length > 1 && (by === "year" || by === "month") && views.some((v) => v.id.startsWith(by === "year" ? "year:" : "month:"));
 		if (view && by !== "travelers" && !chipsAreKey) this.legendEl.append(...this.colorKey(view));
 		const hasPlanned = view && this.config.showPlanned && (view.pins.some((p) => p.planned) || Object.values(view.countries).some((c) => c.state === "planned"));
 		if (hasPlanned) this.legendEl.append(legendItem("Planned", null));
+	},
+
+	renderChipButtons (views) {
+		views.forEach((v, i) => {
+			const chip = el("button", i === this.viewIndex ? "wmtc-chip wmtc-chip-active" : "wmtc-chip");
+			chip.type = "button";
+			const color = this.viewColor(v.id);
+			if (color) {
+				const dot = el("span", "wmtc-dot");
+				dot.style.setProperty("--wmtc-color", color);
+				chip.append(dot);
+			}
+			chip.append(document.createTextNode(this.viewLabel(v)));
+			chip.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this.setView(i, true);
+				this.pause();
+			});
+			this.chipsEl.append(chip);
+		});
+	},
+
+	/** True when the view buttons take more than one line. */
+	chipsWrap () {
+		const chips = [...this.chipsEl.children];
+		return chips.length > 1 && chips.some((c) => c.offsetTop > chips[0].offsetTop + 2);
+	},
+
+	/** One button for the current view, arrows either side, and a dot for each view. */
+	renderSwitcher (views) {
+		const box = el("div", "wmtc-switcher");
+		const step = (delta, symbol, label) => {
+			const b = el("button", "wmtc-step", symbol);
+			b.type = "button";
+			b.setAttribute("aria-label", label);
+			b.addEventListener("click", (e) => {
+				e.stopPropagation();
+				this.stepView(delta);
+				this.pause();
+			});
+			return b;
+		};
+		const v = views[this.viewIndex];
+		const current = el("button", "wmtc-chip wmtc-chip-active wmtc-switcher-current");
+		current.type = "button";
+		const color = this.viewColor(v.id);
+		if (color) {
+			const dot = el("span", "wmtc-dot");
+			dot.style.setProperty("--wmtc-color", color);
+			current.append(dot);
+		}
+		current.append(document.createTextNode(this.viewLabel(v)));
+		current.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.stepView(1);
+			this.pause();
+		});
+		const where = el("span", "wmtc-switcher-dots");
+		if (views.length <= 20) {
+			views.forEach((_, i) => where.append(el("span", i === this.viewIndex ? "wmtc-pos wmtc-pos-active" : "wmtc-pos")));
+		} else {
+			where.textContent = `${this.viewIndex + 1} / ${views.length}`;
+		}
+		box.append(step(-1, "‹", "Previous view"), current, step(1, "›", "Next view"), where);
+		this.chipsEl.append(box);
 	},
 
 	/** The dot on a view chip: the view's color when the map uses that kind of color, else none. */
@@ -364,7 +440,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const by = this.colorBy();
 		if (id === "all") return null;
 		if (id.startsWith("year:")) return by === "year" ? this.yearColor(id.slice(5)) : null;
-		if (id.startsWith("month:")) return by === "month" ? WMTCLayout.monthColor(Number(id.slice(6)), this.config.monthColors) : null;
+		if (id.startsWith("month:")) {
+			if (by === "season") return this.seasonColor(Number(id.slice(6)));
+			return by === "month" ? WMTCLayout.monthColor(Number(id.slice(6)), this.config.monthColors) : null;
+		}
 		if (by !== "travelers") return null;
 		if (id === "together") return this.colors.together;
 		const name = id.slice(id.indexOf(":") + 1);
@@ -372,7 +451,11 @@ Module.register("MMM-WorldMapTravelCollector", {
 	},
 
 	colorBy () {
-		return this.config.colorBy === "year" || this.config.colorBy === "month" ? this.config.colorBy : "travelers";
+		return ["year", "month", "season"].includes(this.config.colorBy) ? this.config.colorBy : "travelers";
+	},
+
+	seasonColor (month) {
+		return WMTCLayout.seasonColor(month, this.config.seasonColors, this.config.hemisphere);
 	},
 
 	yearColor (year) {
@@ -384,6 +467,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const by = this.colorBy();
 		if (by === "year" && place.when) return this.yearColor(place.when.slice(0, 4));
 		if (by === "month" && place.when) return WMTCLayout.monthColor(Number(place.when.slice(5, 7)), this.config.monthColors);
+		if (by === "season" && place.when) return this.seasonColor(Number(place.when.slice(5, 7)));
 		return WMTCLayout.colorFor(place.group, this.colors);
 	},
 
@@ -401,6 +485,14 @@ Module.register("MMM-WorldMapTravelCollector", {
 		// Planned trips are drawn (dashed, in their color) unless showPlanned is off, so the key follows that.
 		const isPlanned = (p) => p.state === "planned" || p.planned === true;
 		const places = [...Object.values(view.countries), ...view.pins].filter((p) => p.when && (this.config.showPlanned || !isPlanned(p)));
+		if (by === "season") {
+			const seasons = new Set(places.map((p) => WMTCLayout.seasonOf(Number(p.when.slice(5, 7)), this.config.hemisphere)));
+			const labels = this.config.labels || {};
+			return [0, 1, 2, 3].filter((i) => seasons.has(i)).map((i) => {
+				const name = WMTCLayout.SEASON_NAMES[i];
+				return legendItem(labels[name.toLowerCase()] || name, WMTCLayout.seasonColor(this.firstMonthOf(i), this.config.seasonColors, this.config.hemisphere));
+			});
+		}
 		if (by === "month") {
 			const months = [...new Set(places.map((p) => Number(p.when.slice(5, 7))))].sort((a, b) => a - b);
 			const names = WMTCLedger.monthNames(this.locale, "short");
@@ -421,6 +513,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const item = el("span", "wmtc-legend-item wmtc-key");
 		item.append(document.createTextNode(years[0]), bar, document.createTextNode(years[years.length - 1]));
 		return [item];
+	},
+
+	/** A month in a season (0 winter … 3 autumn), for its color. */
+	firstMonthOf (season) {
+		for (let m = 1; m <= 12; m++) if (WMTCLayout.seasonOf(m, this.config.hemisphere) === season) return m;
+		return 1;
 	},
 
 	renderStats (view) {
@@ -449,9 +547,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.pageCount = 1;
 		if (!trips.length) return;
 
-		const rows = Math.max(1, Math.floor(l.rows) || 1);
 		const columns = Math.max(1, Math.floor(l.columns) || 1);
 		const baseFont = Math.round(this.scale.fontSize * 0.78 * 10) / 10;
+		const rows = this.ledgerRows(trips.length, columns, baseFont);
 		let pageTrips;
 		let gridRows = rows;
 		let font = baseFont;
@@ -481,6 +579,27 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (more > 0) grid.append(el("div", "wmtc-cell wmtc-cell-more", `+${more} more`));
 		this.ledgerEl.append(grid);
 		if (this.pageCount > 1) this.ledgerEl.append(el("div", "wmtc-page", `${this.page + 1} / ${this.pageCount}`));
+	},
+
+	/**
+	 * Rows in the ledger. A number is used as it is. "auto" is 5, or more when there's room under the map
+	 * (portrait mirrors) and trips to fill it, up to 30; the map keeps its full size either way.
+	 */
+	ledgerRows (count, columns, rowFont) {
+		const wanted = this.config.ledger.rows;
+		if (wanted !== "auto") return Math.max(1, Math.floor(wanted) || 1);
+		const MIN = 5;
+		const MAX = 30;
+		const needed = Math.ceil(count / columns);
+		if (needed <= MIN || !this.features || !this.bodyEl) return MIN;
+		const body = this.bodyEl.getBoundingClientRect();
+		if (body.width < 10 || body.height < 10) return MIN;
+		const pad = WMTCLayout.scaleFor(body.width, body.height).pinRadius * 2;
+		const map = this.naturalMapHeight(body.width, pad);
+		const stats = this.statsEl.hidden ? 0 : this.statsEl.getBoundingClientRect().height;
+		const gaps = this.scale.fontSize * 0.7 * 2 + rowFont * 1.5; // body gaps, and the page number under the ledger
+		const room = Math.floor((body.height - map - stats - gaps) / (rowFont * 1.75));
+		return Math.max(MIN, Math.min(MAX, room, needed));
 	},
 
 	ledgerCell (trip, initials, isNewest) {
@@ -537,6 +656,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 	/** A tap on the map: a pin or a country opens its details; anywhere else closes them. */
 	onMapClick (e) {
 		if (!this.config.details) return;
+		if (!this.hintDone) {
+			this.hintDone = true;
+			if (this.messageEl.classList.contains("wmtc-message-hint")) this.setMessage("");
+		}
 		const target = e.target && e.target.closest ? e.target : null;
 		if (!target) return;
 		if (target.closest(".wmtc-detail")) {
@@ -599,7 +722,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			if (v.place) li.append(el("span", "wmtc-detail-place", v.place));
 			if (v.detail) li.append(el("span", "wmtc-detail-info", v.detail));
 			if (v.planned) li.append(el("span", "wmtc-detail-tag", "planned"));
-			if (v.note) li.append(el("div", "wmtc-detail-note", v.note));
+			if (v.note && this.config.detailsNotes !== false) li.append(el("div", "wmtc-detail-note", v.note));
 			visits.append(li);
 		}
 		card.append(visits);
@@ -624,12 +747,19 @@ Module.register("MMM-WorldMapTravelCollector", {
 			selectedEl.classList.add("wmtc-selected");
 			this.selectedEl = selectedEl;
 		}
+		// A tap anywhere else on the screen closes the card (taps on the map are handled by onMapClick).
+		this.outsideTap = (ev) => {
+			if (!this.mapEl.contains(ev.target)) this.closeDetails();
+		};
+		document.addEventListener("click", this.outsideTap, true);
 		const timeout = Number(this.config.detailsTimeout);
 		this.pausedUntil = Math.max(Date.now() + Math.max(0, Number(this.config.touchPause) || 0) * 1000, timeout > 0 ? Date.now() + timeout * 1000 : Infinity);
 		if (timeout > 0) this.detailTimer = setTimeout(() => this.closeDetails(), timeout * 1000);
 	},
 
 	closeDetails () {
+		if (this.outsideTap) document.removeEventListener("click", this.outsideTap, true);
+		this.outsideTap = null;
 		clearTimeout(this.detailTimer);
 		this.detailTimer = null;
 		if (this.detailEl) this.detailEl.remove();
@@ -640,18 +770,28 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (this.pausedUntil === Infinity) this.pause();
 	},
 
+	setMessage (text, hint) {
+		this.messageEl.textContent = text;
+		this.messageEl.classList.toggle("wmtc-message-hint", Boolean(hint && text));
+	},
+
+	/**
+	 * Draw the map. The countries' outlines are the slow part (about half a second on a Pi 4), so they are
+	 * drawn once per size, map shape and theme; switching views only recolors them and redraws the pins.
+	 */
 	renderMap () {
 		if (!this.mapEl) return;
 		this.closeDetails();
-		const old = this.mapEl.querySelector("svg");
-		if (old) old.remove();
-
 		const message = this.error || (!this.features ? "Loading map…" : !this.model ? "Loading trips…" : "");
-		this.messageEl.textContent = message;
-		if (!this.features) return;
+		this.setMessage(message);
+		const dropMap = () => {
+			if (this.mapBase) this.mapBase.svg.remove();
+			this.mapBase = null;
+		};
+		if (!this.features) return dropMap();
 
 		let box = this.mapEl.getBoundingClientRect();
-		if (box.width < 10) return;
+		if (box.width < 10) return dropMap();
 		const scale = WMTCLayout.scaleFor(box.width, box.height);
 		const pad = scale.pinRadius * 2;
 		const natural = this.naturalMapHeight(box.width, pad);
@@ -659,30 +799,18 @@ Module.register("MMM-WorldMapTravelCollector", {
 			this.mapEl.style.height = `${natural}px`;
 			box = this.mapEl.getBoundingClientRect();
 		}
-		if (box.height < 10) return;
+		if (box.height < 10) return dropMap();
 		const view = this.currentView();
 		const analog = this.theme === "analog";
 
-		const collection = { type: "FeatureCollection", features: this.features };
-		const projection = makeProjection(this.config.projection);
-		projection.fitExtent([[pad, pad], [box.width - pad, box.height - pad]], collection);
-		const path = d3.geoPath(projection);
-		const top = path.bounds(collection)[0][1];
-		if (top > pad + 1) {
-			const [tx, ty] = projection.translate();
-			projection.translate([tx, ty - (top - pad)]);
+		const key = [Math.round(box.width), Math.round(box.height), this.config.projection, this.theme, this.features.length].join("|");
+		if (!this.mapBase || this.mapBase.key !== key) {
+			dropMap();
+			this.mapBase = this.drawBase(key, box, scale, pad);
 		}
+		const { svg, projection, countryPaths, filterId } = this.mapBase;
+		if (!svg.isConnected) this.mapEl.appendChild(svg);
 
-		const svg = svgEl("svg", { class: "wmtc-svg", width: box.width, height: box.height, viewBox: `0 0 ${box.width} ${box.height}` });
-		svg.style.setProperty("--wmtc-line", `${scale.lineWidth}px`);
-		const filterId = `wmtc-wash-${this.identifier}`;
-		if (analog) {
-			svg.appendChild(watercolorFilter(filterId));
-			const grid = path(d3.geoGraticule10());
-			if (grid) svg.appendChild(svgEl("path", { d: grid, class: "wmtc-graticule" }));
-		}
-
-		const countryLayer = svgEl("g", { class: "wmtc-countries" });
 		const states = view ? view.countries : {};
 		const showPlanned = this.config.showPlanned;
 		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, unit: this.config.fadeUnit, amount: this.config.fadeAmount };
@@ -691,23 +819,23 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const f = WMTCLayout.fadeFactor(last, month, fade);
 			return f < 1 ? `;--wmtc-fade:${f}` : "";
 		};
-		for (const f of this.features) {
-			const d = path(f);
-			if (!d) continue;
-			const state = states[f.properties.iso2];
-			const attrs = { d, class: "wmtc-country" };
+		for (const { el: p, code } of countryPaths) {
+			const state = states[code];
 			if (state && (state.state === "visited" || showPlanned)) {
-				attrs.class += ` wmtc-${state.state}`;
-				attrs["data-code"] = f.properties.iso2;
-				attrs.style = `--wmtc-color:${this.placeColor(state)}${state.state === "visited" ? fadeStyle(state.last) : ""}`;
-				if (analog && state.state === "visited") attrs.filter = `url(#${filterId})`;
+				p.setAttribute("class", `wmtc-country wmtc-${state.state}`);
+				p.setAttribute("data-code", code);
+				p.setAttribute("style", `--wmtc-color:${this.placeColor(state)}${state.state === "visited" ? fadeStyle(state.last) : ""}`);
+				if (analog && state.state === "visited") p.setAttribute("filter", `url(#${filterId})`);
+				else p.removeAttribute("filter");
+			} else if (p.hasAttribute("data-code")) {
+				p.setAttribute("class", "wmtc-country");
+				p.removeAttribute("data-code");
+				p.removeAttribute("style");
+				p.removeAttribute("filter");
 			}
-			const p = svgEl("path", attrs);
-			p.appendChild(svgEl("title", {}, f.properties.name));
-			countryLayer.appendChild(p);
 		}
-		svg.appendChild(countryLayer);
 
+		svg.querySelectorAll(".wmtc-pins, .wmtc-halos").forEach((g) => g.remove());
 		const pinLayer = svgEl("g", { class: "wmtc-pins" });
 		const haloLayer = svgEl("g", { class: "wmtc-halos" });
 		// Where each pin is drawn, so a tap can pick the nearest one (pins are small and often close together).
@@ -734,13 +862,108 @@ Module.register("MMM-WorldMapTravelCollector", {
 			}
 		}
 		svg.append(haloLayer, pinLayer);
-		this.mapEl.appendChild(svg);
 
 		if (this.model && view && !view.tripIds.length && !this.error) {
-			this.messageEl.textContent = Object.keys(this.model.trips).length ? "No trips in this view yet" : "No trips yet. Add some to data/trips.json";
+			this.setMessage(Object.keys(this.model.trips).length ? "No trips in this view yet" : "No trips yet. Add some to data/trips.json");
+		} else if (!this.messageEl.textContent && this.hintWanted()) {
+			this.setMessage("Tap a place for details", true);
 		}
+	},
+
+	/** The part of the map that only changes with its size, shape or theme: the countries' outlines. */
+	drawBase (key, box, scale, pad) {
+		const collection = { type: "FeatureCollection", features: this.features };
+		const projection = makeProjection(this.config.projection);
+		projection.fitExtent([[pad, pad], [box.width - pad, box.height - pad]], collection);
+		const path = d3.geoPath(projection);
+		const top = path.bounds(collection)[0][1];
+		if (top > pad + 1) {
+			const [tx, ty] = projection.translate();
+			projection.translate([tx, ty - (top - pad)]);
+		}
+
+		const svg = svgEl("svg", { class: "wmtc-svg", width: box.width, height: box.height, viewBox: `0 0 ${box.width} ${box.height}` });
+		svg.style.setProperty("--wmtc-line", `${scale.lineWidth}px`);
+		const filterId = `wmtc-wash-${this.identifier}`;
+		if (this.theme === "analog") {
+			svg.appendChild(watercolorFilter(filterId));
+			const grid = path(d3.geoGraticule10());
+			if (grid) svg.appendChild(svgEl("path", { d: grid, class: "wmtc-graticule" }));
+		}
+		const countryLayer = svgEl("g", { class: "wmtc-countries" });
+		const countryPaths = [];
+		for (const f of this.features) {
+			const d = path(f);
+			if (!d) continue;
+			const p = svgEl("path", { d, class: "wmtc-country" });
+			p.appendChild(svgEl("title", {}, f.properties.name));
+			countryLayer.appendChild(p);
+			countryPaths.push({ el: p, code: f.properties.iso2 });
+		}
+		svg.appendChild(countryLayer);
+		this.mapEl.appendChild(svg);
+		return { key, svg, projection, countryPaths, filterId };
+	},
+
+	/** "Tap a place for details", on touch screens until the first tap. */
+	hintWanted () {
+		return Boolean(this.config.details && this.config.detailsHint !== false && !this.hintDone && isTouchScreen() && this.model && Object.keys(this.model.trips).length);
+	},
+
+	/**
+	 * When to show "Add trips from your phone" (showEditorLink): "full" in the middle of the map when there
+	 * are no trips yet, "corner" for the first 10 minutes after a start ("auto") or always (true), else none.
+	 */
+	editorCardMode () {
+		const want = this.config.showEditorLink;
+		if (!this.editorLink || !this.model || want === false || want === "false" || this.error) return null;
+		if (!Object.keys(this.model.trips).length) return "full";
+		if (want === true || want === "always" || Date.now() - this.startedAt < EDITOR_CARD_MS) return "corner";
+		return null;
+	},
+
+	renderEditorCard () {
+		if (this.startEl) this.startEl.remove();
+		this.startEl = null;
+		const mode = this.mapEl ? this.editorCardMode() : null;
+		if (!mode) return;
+		const link = this.editorLink;
+		const card = el("div", `wmtc-start wmtc-start-${mode}`);
+		if (link.reachable && link.qr) card.append(qrSvg(link.qr));
+		const words = el("div", "wmtc-start-text");
+		words.append(el("div", "wmtc-start-title", "Add trips from your phone"));
+		if (link.reachable) {
+			words.append(el("div", "wmtc-start-help", mode === "full" ? "Scan the code, or open this address on a phone on the same Wi-Fi:" : "Scan the code, or open:"));
+			words.append(el("div", "wmtc-start-url", link.url));
+		} else {
+			words.append(el("div", "wmtc-start-help", link.reason === "network"
+				? "The mirror isn't connected to a network, so phones can't open the trip editor yet."
+				: "Phones can't open the trip editor yet: MagicMirror only lets the mirror itself in. See \u201cOpening the editor from your phone\u201d in this module's README."));
+		}
+		card.append(words);
+		if (mode === "full") this.setMessage("");
+		this.mapEl.append(card);
+		this.startEl = card;
 	}
 });
+
+/** How long "auto" shows the editor's address after a start. */
+const EDITOR_CARD_MS = 10 * 60 * 1000;
+
+function isTouchScreen () {
+	if (typeof window === "undefined") return false;
+	const coarse = typeof window.matchMedia === "function" && window.matchMedia("(any-pointer: coarse)").matches;
+	return Boolean(coarse || (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0));
+}
+
+/** A QR code drawn from the path the node helper made: black squares on a white square, as scanners expect. */
+function qrSvg (qr) {
+	const quiet = 2;
+	const size = qr.size + quiet * 2;
+	const svg = svgEl("svg", { class: "wmtc-qr", viewBox: `${-quiet} ${-quiet} ${size} ${size}`, "shape-rendering": "crispEdges", role: "img", "aria-label": "QR code for the trip editor" });
+	svg.append(svgEl("rect", { x: -quiet, y: -quiet, width: size, height: size, fill: "#fff" }), svgEl("path", { d: qr.d, fill: "#000" }));
+	return svg;
+}
 
 function makeProjection (name) {
 	if (name === "mercator") return d3.geoMercator();

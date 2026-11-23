@@ -20,6 +20,7 @@ const { loadGeoData } = require("../lib/geodata");
 const { createTripService } = require("../lib/service");
 const { createEditorHandler } = require("../lib/editor-server");
 const { importRecords, recordsFromText } = require("../lib/pipeline");
+const { qrPath } = require("../lib/editor-link");
 
 const ROOT = path.join(__dirname, "..");
 const TYPES = { ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".html": "text/html", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
@@ -76,6 +77,14 @@ function previewPage () {
 			.then((model) => {
 				m.socketNotificationReceived("WMTC_DATA", { identifier: m.identifier, model });
 				if (q.get("view")) m.setView(q.get("view"));
+				// ?editor=off | unreachable; ?editorHost=192.168.1.20:8080 shows that address instead of this page's.
+				if (q.get("editor") !== "off") {
+					return fetch("/__editor?" + new URLSearchParams({ state: q.get("editor") || "", host: q.get("editorHost") || location.host }))
+						.then((r) => r.json())
+						.then((editor) => m.socketNotificationReceived("WMTC_EDITOR", { identifier: m.identifier, editor }));
+				}
+			})
+			.then(() => {
 				document.body.dataset.ready = "1";
 			});
 	};
@@ -107,6 +116,13 @@ function createServer ({ dataDir = exampleDataDir(), clock, config: extraConfig 
 			if (url.pathname === "/") {
 				res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
 				return res.end(previewPage());
+			}
+			if (url.pathname === "/__editor") {
+				// What the node helper sends the mirror: the editor's address and its QR code.
+				const link = `http://${url.searchParams.get("host")}${EDITOR_PREFIX}/`;
+				const unreachable = url.searchParams.get("state") === "unreachable";
+				res.writeHead(200, { "Content-Type": "application/json" });
+				return res.end(JSON.stringify(unreachable ? { url: link, reachable: false, reason: "address", qr: null } : { url: link, reachable: true, reason: "", qr: qrPath(link) }));
 			}
 			if (url.pathname === "/__model") {
 				const config = JSON.parse(url.searchParams.get("config") || "{}");

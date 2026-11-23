@@ -82,7 +82,7 @@ describe("module definition", () => {
 		m.file = (p) => p;
 		expect(m.getScripts()).toEqual(expect.arrayContaining(["node_modules/d3-geo/dist/d3-geo.min.js", "lib/layout.js", "lib/ledger.js"]));
 		expect(m.getStyles()).toEqual(["css/wmtc.css"]);
-		expect(definition.def.defaults.ledger).toMatchObject({ rows: 5, columns: 4, overflow: "cycle" });
+		expect(definition.def.defaults.ledger).toMatchObject({ rows: "auto", columns: 4, overflow: "cycle" });
 	});
 
 	test("partial ledger config is filled in from defaults", async () => {
@@ -643,5 +643,242 @@ describe("analog theme", () => {
 		data(m);
 		expect(document.querySelector(".wmtc-graticule")).toBeNull();
 		expect($$(".wmtc-visited").some((p) => p.hasAttribute("filter"))).toBe(false);
+	});
+});
+
+describe("phase 3: getting started (R1)", () => {
+	const link = { url: "http://192.168.1.20:8080/MMM-WorldMapTravelCollector/", reachable: true, reason: "", qr: { size: 21, d: "M0 0h7v1h-7z" } };
+	const editor = (m, e = link) => m.socketNotificationReceived("WMTC_EDITOR", { identifier: m.identifier, editor: e });
+	const empty = { ...build([]), problems: [] };
+
+	test("no trips yet: the map says to add them from a phone, with a QR code and the address", async () => {
+		const m = await mount();
+		data(m, empty);
+		editor(m);
+		expect(document.querySelector(".wmtc-start-full")).not.toBeNull();
+		expect(text(".wmtc-start-title")).toBe("Add trips from your phone");
+		expect(text(".wmtc-start-url")).toBe(link.url);
+		expect(document.querySelector(".wmtc-qr path").getAttribute("d")).toBe("M0 0h7v1h-7z");
+		expect(document.querySelector(".wmtc-qr").getAttribute("viewBox")).toBe("-2 -2 25 25");
+		expect(text(".wmtc-message")).toBe("");
+		// Still there after a redraw, and gone once there are trips (after the first 10 minutes).
+		m.render();
+		expect($$(".wmtc-start")).toHaveLength(1);
+		m.startedAt -= 11 * 60 * 1000;
+		data(m);
+		expect($$(".wmtc-start")).toHaveLength(0);
+	});
+
+	test("with trips: a corner card for the first 10 minutes, then nothing", async () => {
+		const m = await mount();
+		jest.useFakeTimers();
+		data(m);
+		editor(m);
+		expect(document.querySelector(".wmtc-start-corner")).not.toBeNull();
+		jest.advanceTimersByTime(10 * 60 * 1000 + 100);
+		expect($$(".wmtc-start")).toHaveLength(0);
+	});
+
+	test("showEditorLink true keeps it; false never shows it, even with no trips", async () => {
+		const always = await mount({ showEditorLink: true });
+		data(always);
+		always.startedAt -= 60 * 60 * 1000;
+		editor(always);
+		expect($$(".wmtc-start-corner")).toHaveLength(1);
+		const never = await mount({ showEditorLink: false });
+		data(never, empty);
+		editor(never);
+		expect($$(".wmtc-start")).toHaveLength(0);
+		expect(text(".wmtc-message")).toBe("No trips yet. Add some to data/trips.json");
+	});
+
+	test("when phones can't reach the editor, it says so instead of showing a code", async () => {
+		const m = await mount();
+		data(m, empty);
+		editor(m, { url: link.url, reachable: false, reason: "address", qr: null });
+		expect($$(".wmtc-qr")).toHaveLength(0);
+		expect(text(".wmtc-start-help")).toMatch(/only lets the mirror itself in.*README/);
+		editor(m, { url: null, reachable: false, reason: "network", qr: null });
+		expect(text(".wmtc-start-help")).toMatch(/isn't connected to a network/);
+	});
+
+	test("nothing before the node helper says where the editor is (editor: false)", async () => {
+		const m = await mount();
+		data(m, empty);
+		expect($$(".wmtc-start")).toHaveLength(0);
+	});
+});
+
+describe("phase 3: readable, color-blind-safe colors (R2, R4)", () => {
+	const colorOf = (sel) => document.querySelector(sel).style.getPropertyValue("--wmtc-color");
+
+	test("contrast: high", async () => {
+		await mount({ contrast: "high" });
+		expect(document.querySelector(".wmtc").classList.contains("wmtc-contrast-high")).toBe(true);
+		await mount();
+		expect(document.querySelector(".wmtc").classList.contains("wmtc-contrast-high")).toBe(false);
+	});
+
+	test("colorBy season: four colors, a key, month buttons in their season's color", async () => {
+		const m = await mount({ colorBy: "season", filters: ["all", "months"] });
+		data(m, build(trips, { filters: ["all", "months"] }));
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.DEFAULT_SEASON_COLORS[1]); // March: spring
+		expect(colorOf(".wmtc-country[data-code='IS']")).toBe(Layout.DEFAULT_SEASON_COLORS[2]); // August: summer
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["Spring", "Summer", "Planned"]);
+		expect($$(".wmtc-chip .wmtc-dot").map((d) => d.style.getPropertyValue("--wmtc-color"))).toEqual([
+			Layout.DEFAULT_SEASON_COLORS[1], Layout.DEFAULT_SEASON_COLORS[1], Layout.DEFAULT_SEASON_COLORS[2], Layout.DEFAULT_SEASON_COLORS[2]
+		]);
+	});
+
+	test("southern hemisphere, chosen colors and names", async () => {
+		const m = await mount({ colorBy: "season", hemisphere: "south", seasonColors: ["#111111", "#222222", "#333333", "#444444"], labels: { autumn: "Fall" }, showPlanned: false });
+		data(m);
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe("#444444"); // March in the south: autumn
+		// March: autumn; June and August: winter (April 2027 is planned, and hidden here).
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["Winter", "Fall"]);
+	});
+});
+
+describe("phase 3: compact view switcher (R3)", () => {
+	const yearModel = () => build(trips, { filters: ["all", "years"] });
+
+	test("compact: one button for the view, arrows and a dot per view", async () => {
+		const m = await mount({ viewSwitcher: "compact", colorBy: "year", filters: ["all", "years"] });
+		data(m, yearModel());
+		expect($$(".wmtc-switcher")).toHaveLength(1);
+		expect(text(".wmtc-switcher-current")).toBe("All");
+		expect($$(".wmtc-pos")).toHaveLength(5);
+		document.querySelector("[aria-label='Next view']").click();
+		expect(text(".wmtc-switcher-current")).toBe("2027");
+		expect(document.querySelector(".wmtc-pos-active")).toBe($$(".wmtc-pos")[1]);
+		document.querySelector("[aria-label='Previous view']").click();
+		document.querySelector("[aria-label='Previous view']").click();
+		expect(text(".wmtc-switcher-current")).toBe("2023");
+		document.querySelector(".wmtc-switcher-current").click();
+		expect(text(".wmtc-switcher-current")).toBe("All");
+		expect(m.pausedUntil).toBeGreaterThan(Date.now());
+		// The buttons no longer show every year's color, so a key does.
+		expect($$(".wmtc-key")).toHaveLength(1);
+	});
+
+	test("auto: buttons while they fit on one line, compact once they wrap", async () => {
+		const m = await mount({ filters: ["all", "years"] });
+		data(m, yearModel());
+		expect($$(".wmtc-switcher")).toHaveLength(0);
+		const spy = jest.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function () {
+			return this.classList.contains("wmtc-chip") ? [...this.parentNode.children].indexOf(this) * 12 : 0;
+		});
+		try {
+			m.render();
+			expect($$(".wmtc-switcher")).toHaveLength(1);
+			const buttons = await mount({ filters: ["all", "years"], viewSwitcher: "buttons" });
+			data(buttons, yearModel());
+			expect($$(".wmtc-switcher")).toHaveLength(0);
+			expect($$(".wmtc-chip")).toHaveLength(5);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	test("many views: a count instead of dots", async () => {
+		const many = Array.from({ length: 22 }, (_, i) => trip({ id: `t${i}`, city: "Lisbon", country: "PT", date: `${2000 + i}-05` }));
+		const m = await mount({ viewSwitcher: "compact", filters: ["all", "years"] });
+		data(m, build(many, { filters: ["all", "years"] }));
+		expect(text(".wmtc-switcher-dots")).toBe("1 / 23");
+	});
+});
+
+describe("phase 3: touch hint and a private card (R5)", () => {
+	const click = (target, coords = {}) => target.dispatchEvent(new MouseEvent("click", { bubbles: true, ...coords }));
+
+	test("touch screens get a hint until the first tap", async () => {
+		Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
+		try {
+			const m = await mount();
+			data(m);
+			expect(text(".wmtc-message")).toBe("Tap a place for details");
+			click(document.querySelector(".wmtc-svg"), { clientX: 5, clientY: 5 });
+			expect(text(".wmtc-message")).toBe("");
+			m.render();
+			expect(text(".wmtc-message")).toBe("");
+			const off = await mount({ detailsHint: false });
+			data(off);
+			expect(text(".wmtc-message")).toBe("");
+		} finally {
+			delete navigator.maxTouchPoints;
+		}
+	});
+
+	test("no hint without a touch screen", async () => {
+		const m = await mount();
+		data(m);
+		expect(text(".wmtc-message")).toBe("");
+	});
+
+	test("detailsNotes: false keeps notes off the card; a tap anywhere else closes it", async () => {
+		const noted = trips.map((t) => (t.id === "lis" ? { ...t, note: "Anniversary" } : t));
+		const m = await mount({ detailsNotes: false });
+		data(m, build(noted));
+		const lisbon = m.pinPoints.find((p) => p.key === "lisbon|PT");
+		click(document.querySelector(".wmtc-svg"), { clientX: lisbon.x, clientY: lisbon.y });
+		expect(text(".wmtc-detail-title")).toBe("Lisbon, Portugal");
+		expect($$(".wmtc-detail-note")).toHaveLength(0);
+		click(document.querySelector(".wmtc-stats"));
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		const shown = await mount();
+		data(shown, build(noted));
+		click(document.querySelector(".wmtc-svg"), { clientX: lisbon.x, clientY: lisbon.y });
+		expect(text(".wmtc-detail-note")).toBe("Anniversary");
+	});
+});
+
+describe("phase 3: speed and room (M1, M3)", () => {
+	test("switching views recolors the map instead of drawing the world again", async () => {
+		const m = await mount();
+		data(m);
+		const svg = document.querySelector(".wmtc-svg");
+		const spain = [...document.querySelectorAll(".wmtc-country")].find((p) => p.querySelector("title").textContent === "Spain");
+		m.setView("solo:Sam");
+		expect(document.querySelector(".wmtc-svg")).toBe(svg);
+		expect($$(".wmtc-svg")).toHaveLength(1);
+		expect($$(".wmtc-country.wmtc-visited").map((p) => p.getAttribute("data-code"))).toEqual(["IS"]);
+		expect(document.querySelector(".wmtc-country[data-code='PT']")).toBeNull();
+		expect($$(".wmtc-pin")).toHaveLength(1);
+		m.setView("all");
+		expect($$(".wmtc-country.wmtc-visited")).toHaveLength(3);
+		expect(spain.isConnected).toBe(true);
+		// A new theme draws it again.
+		m.setTheme("analog");
+		expect(document.querySelector(".wmtc-svg")).not.toBe(svg);
+		expect($$(".wmtc-svg")).toHaveLength(1);
+		expect(document.querySelector(".wmtc-country[data-code='PT']").getAttribute("filter")).toMatch(/^url\(#wmtc-wash-/);
+	});
+
+	test("ledger rows: \"auto\" fills a tall screen when there are trips for it, a number stays fixed", async () => {
+		const many = Array.from({ length: 40 }, (_, i) => trip({ id: `t${i}`, city: "Lisbon", country: "PT", date: `${2000 + (i % 20)}-${String((i % 12) + 1).padStart(2, "0")}` }));
+		const rowsOf = () => document.querySelector(".wmtc-ledger-grid").style.gridTemplateRows;
+		const tall = (m) => {
+			m.bodyEl.getBoundingClientRect = () => ({ width: 1000, height: 1700, top: 0, left: 0 });
+			m.statsEl.getBoundingClientRect = () => ({ width: 1000, height: 30, top: 0, left: 0 });
+		};
+		const m = await mount();
+		tall(m);
+		data(m, build(many));
+		expect(rowsOf()).toBe("repeat(10, 1fr)"); // 40 trips in 4 columns
+		data(m, build(many.slice(0, 12)));
+		expect(rowsOf()).toBe("repeat(5, 1fr)");
+		const lots = Array.from({ length: 90 }, (_, i) => trip({ id: `u${i}`, city: "Lisbon", country: "PT", date: `${1990 + (i % 30)}-0${(i % 9) + 1}` }));
+		data(m, build(lots));
+		expect(rowsOf()).toBe("repeat(23, 1fr)"); // 90 trips, 4 columns
+
+		const fixed = await mount({ ledger: { rows: 3 } });
+		tall(fixed);
+		data(fixed, build(many));
+		expect(rowsOf()).toBe("repeat(3, 1fr)");
+		// Landscape: no room under the map, so 5.
+		const wide = await mount();
+		data(wide, build(many));
+		expect(rowsOf()).toBe("repeat(5, 1fr)");
 	});
 });

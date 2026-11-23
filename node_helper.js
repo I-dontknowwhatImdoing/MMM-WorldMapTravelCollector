@@ -6,8 +6,16 @@ const Log = require("logger");
 const { loadGeoData } = require("./lib/geodata");
 const { createTripService } = require("./lib/service");
 const { createEditorHandler } = require("./lib/editor-server");
+const { editorLink, qrPath } = require("./lib/editor-link");
 
 const HOURLY = 60 * 60 * 1000;
+
+/** What to do when phones can't reach the editor (the mirror's card says it in fewer words). */
+const UNREACHABLE = {
+	address: "MagicMirror only answers the mirror itself (address: \"localhost\"), so phones can't open the trip editor yet. Set address: \"0.0.0.0\" and add your home network to ipWhitelist in config.js; see \"Opening the editor from your phone\" in this module's README.",
+	whitelist: "MagicMirror's ipWhitelist only lets the mirror itself in, so phones can't open the trip editor yet. Add your home network (e.g. \"192.168.1.0/24\") to ipWhitelist in config.js; see \"Opening the editor from your phone\" in this module's README.",
+	network: "The mirror has no network address right now, so phones can't open the trip editor."
+};
 
 module.exports = NodeHelper.create({
 	start () {
@@ -16,11 +24,19 @@ module.exports = NodeHelper.create({
 		if (this.expressApp) {
 			const handler = createEditorHandler({
 				getContext: () => this.editorContext(),
-				logger: { warn: (m) => Log.warn(`[${this.name}] ${m}`) }
+				logger: { warn: (m) => Log.warn(m) }
 			});
 			this.expressApp.use(this.editorRoute, (req, res) => handler(req, res));
-			Log.info(`[${this.name}] Trip editor at http://<this mirror's address>:${(global.config && global.config.port) || 8080}${this.editorRoute}/`);
+			// MagicMirror's log already starts each line with the module's name.
+			const link = this.editorLink();
+			Log.info(`Trip editor: ${link.url || `http://<this mirror's address>:${(global.config && global.config.port) || 8080}${this.editorRoute}/`}`);
+			if (!link.reachable) Log.warn(UNREACHABLE[link.reason]);
 		}
+	},
+
+	/** The editor's address for phones, and whether MagicMirror lets them in (see lib/editor-link.js). */
+	editorLink () {
+		return editorLink({ mmConfig: global.config || {}, route: this.editorRoute });
 	},
 
 	/** The settings the web editor works with: the module instance started most recently. */
@@ -51,7 +67,7 @@ module.exports = NodeHelper.create({
 		const { identifier } = payload;
 		const trusted = this.trustedConfig(identifier);
 		if (trusted === null) {
-			Log.warn(`[${this.name}] Ignored a start request for ${String(identifier).slice(0, 80)}: it isn't in MagicMirror's config`);
+			Log.warn(`Ignored a start request for ${String(identifier).slice(0, 80)}: it isn't in MagicMirror's config`);
 			return;
 		}
 		const config = trusted ? { ...payload.config, editor: trusted.editor, editorPin: trusted.editorPin, editorHosts: trusted.editorHosts, dataDir: trusted.dataDir } : payload.config;
@@ -68,18 +84,24 @@ module.exports = NodeHelper.create({
 				config,
 				geo,
 				onChange: send,
-				logger: { warn: (m) => Log.warn(`[${this.name}] ${m}`), info: (m) => Log.info(`[${this.name}] ${m}`) }
+				logger: { warn: (m) => Log.warn(m), info: (m) => Log.info(m) }
 			});
 			send(service.load());
 			service.watch();
 		} catch (err) {
-			Log.error(`[${this.name}] Could not load trips: ${err.message}`);
+			Log.error(`Could not load trips: ${err.message}`);
 			this.sendSocketNotification("WMTC_ERROR", { identifier, message: err.message });
 			if (service) service.stop();
 			return;
 		}
 		const timer = setInterval(() => service.refresh(), HOURLY);
 		this.instances.set(identifier, { service, timer, config, dataDir, geo });
+		if (this.expressApp && config.editor !== false) {
+			// For the mirror's "Add trips from your phone" card (showEditorLink).
+			const link = this.editorLink();
+			const qr = link.url && link.reachable ? qrPath(link.url) : null;
+			this.sendSocketNotification("WMTC_EDITOR", { identifier, editor: { ...link, qr } });
+		}
 	},
 
 	stopInstance (identifier) {

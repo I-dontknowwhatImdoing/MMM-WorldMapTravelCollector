@@ -161,3 +161,49 @@ describe("year and month colors", () => {
 		expect(L.monthColor("x")).toBe(L.DEFAULT_MONTH_COLORS[0]);
 	});
 });
+
+describe("R4: colors people with color blindness can tell apart", () => {
+	// Machado et al. 2009 simulation matrices (severity 1) on linear RGB, then CIELAB and ΔE76.
+	const SIM = {
+		normal: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+		protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+		deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+		tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]]
+	};
+	const lab = (hex, kind) => {
+		const lin = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+		const [r, g, b] = SIM[kind].map((row) => Math.min(1, Math.max(0, row[0] * lin[0] + row[1] * lin[1] + row[2] * lin[2])));
+		const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
+		const X = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047);
+		const Y = f(0.2126 * r + 0.7152 * g + 0.0722 * b);
+		const Z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+		return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
+	};
+	const closest = (colors, kind) => {
+		let min = Infinity;
+		const labs = colors.map((c) => lab(c, kind));
+		for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) min = Math.min(min, Math.hypot(...labs[i].map((v, k) => v - labs[j][k])));
+		return min;
+	};
+
+	test("every pair of month colors differs by ΔE 20 or more, also for red-green color blindness", () => {
+		for (const kind of ["normal", "protan", "deutan"]) expect(closest(L.DEFAULT_MONTH_COLORS, kind)).toBeGreaterThanOrEqual(20);
+		expect(closest(L.DEFAULT_MONTH_COLORS, "tritan")).toBeGreaterThanOrEqual(15);
+		// The old palette failed: November and December were ΔE 5 apart for green-weak eyes.
+		expect(closest(["#BA68C8", "#7986CB"], "deutan")).toBeLessThan(6);
+	});
+
+	test("season colors are far apart for every kind of color vision", () => {
+		for (const kind of Object.keys(SIM)) expect(closest(L.DEFAULT_SEASON_COLORS, kind)).toBeGreaterThanOrEqual(15);
+		for (const kind of ["normal", "protan", "deutan"]) expect(closest(L.DEFAULT_SEASON_COLORS, kind)).toBeGreaterThanOrEqual(30);
+	});
+
+	test("seasons by month, north and south", () => {
+		expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => L.seasonOf(m)).join("")).toBe("001112223330");
+		expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => L.seasonOf(m, "south")).join("")).toBe("223330001112");
+		expect(L.seasonOf("x")).toBe(0);
+		expect(L.seasonColor(7)).toBe(L.DEFAULT_SEASON_COLORS[2]);
+		expect(L.seasonColor(7, ["#111", "#222", "#333", "#444"], "south")).toBe("#111");
+		expect(L.seasonColor(7, ["#111"])).toBe(L.DEFAULT_SEASON_COLORS[2]);
+	});
+});

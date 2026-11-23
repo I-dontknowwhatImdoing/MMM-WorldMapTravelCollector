@@ -42,7 +42,8 @@
 	--wmtc-font: 16px;
 	--wmtc-line: 0.6px;
 	--wmtc-text: rgba(255, 255, 255, 0.92);
-	--wmtc-muted: rgba(255, 255, 255, 0.5);
+	/* 75% white: grey text stays readable through a two-way mirror, which passes only about 30% of the light */
+	--wmtc-muted: rgba(255, 255, 255, 0.75);
 	--wmtc-faint: rgba(255, 255, 255, 0.14);
 	--wmtc-land: rgba(255, 255, 255, 0.055);
 	--wmtc-border: rgba(255, 255, 255, 0.26);
@@ -394,7 +395,7 @@
 	--wmtc-paper: #efe3c8;
 	--wmtc-ink: #3d2f1f;
 	--wmtc-text: var(--wmtc-ink);
-	--wmtc-muted: rgba(61, 47, 31, 0.62);
+	--wmtc-muted: rgba(61, 47, 31, 0.78); /* 5.5:1 on the paper */
 	--wmtc-faint: rgba(61, 47, 31, 0.2);
 	--wmtc-land: rgba(150, 112, 62, 0.12);
 	--wmtc-border: rgba(61, 47, 31, 0.55);
@@ -631,4 +632,146 @@
 	width: 7em;
 	height: 0.6em;
 	border-radius: 0.3em;
+}
+
+/* contrast: "high", for dim mirrors: grey text close to white, stronger lines */
+
+.wmtc-contrast-high {
+	--wmtc-text: #fff;
+	--wmtc-muted: rgba(255, 255, 255, 0.9);
+	--wmtc-faint: rgba(255, 255, 255, 0.3);
+	--wmtc-land: rgba(255, 255, 255, 0.1);
+	--wmtc-border: rgba(255, 255, 255, 0.45);
+	--wmtc-visited-opacity: 0.55;
+}
+
+.wmtc-theme-analog.wmtc-contrast-high {
+	--wmtc-text: #2a1f13;
+	--wmtc-muted: rgba(42, 31, 19, 0.9);
+	--wmtc-faint: rgba(42, 31, 19, 0.32);
+	--wmtc-land: rgba(150, 112, 62, 0.18);
+	--wmtc-border: rgba(42, 31, 19, 0.7);
+	--wmtc-visited-opacity: 0.72;
+}
+
+/* Compact view switcher (viewSwitcher): ‹ 2025 › with a dot per view */
+
+.wmtc-switcher {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+}
+
+.wmtc-step {
+	min-width: 1.9em;
+	padding: 0.05em 0.4em 0.15em;
+	border: 1px solid var(--wmtc-faint);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wmtc-text);
+	font: inherit;
+	font-size: 0.95em;
+	line-height: 1.1;
+	cursor: pointer;
+}
+
+.wmtc-switcher-dots {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+	margin-left: 0.5em;
+	font-size: 0.72em;
+	color: var(--wmtc-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.wmtc-pos {
+	width: 0.4em;
+	height: 0.4em;
+	border-radius: 50%;
+	background: var(--wmtc-faint);
+}
+
+.wmtc-pos-active {
+	background: var(--wmtc-text);
+}
+
+.wmtc-theme-analog .wmtc-step {
+	border-color: transparent;
+	color: var(--wmtc-ink);
+}
+
+/* "Tap a place for details" (detailsHint) */
+
+.wmtc-message-hint {
+	font-style: italic;
+}
+
+/* "Add trips from your phone" (showEditorLink) */
+
+.wmtc-start {
+	position: absolute;
+	z-index: 4;
+	display: flex;
+	align-items: center;
+	gap: 1em;
+	box-sizing: border-box;
+	padding: 0.9em 1.1em;
+	border: 1px solid var(--wmtc-muted);
+	border-radius: 0.7em;
+	background: rgba(0, 0, 0, 0.88);
+	color: var(--wmtc-text);
+	text-align: left;
+}
+
+.wmtc-start-full {
+	top: 50%;
+	left: 50%;
+	width: max-content;
+	max-width: min(32em, calc(100% - 1em));
+	transform: translate(-50%, -50%);
+	font-size: 1.05em;
+}
+
+.wmtc-start-corner {
+	left: 0.3em;
+	bottom: 0.3em;
+	max-width: min(24em, calc(100% - 1em));
+	padding: 0.6em 0.8em;
+	font-size: 0.72em;
+}
+
+.wmtc-qr {
+	flex: none;
+	width: 9em;
+	height: 9em;
+	border-radius: 0.3em;
+}
+
+.wmtc-start-corner .wmtc-qr {
+	width: 10em;
+	height: 10em;
+}
+
+.wmtc-start-title {
+	margin-bottom: 0.35em;
+	font-size: 1.25em;
+	font-weight: 600;
+}
+
+.wmtc-start-help {
+	color: var(--wmtc-muted);
+	line-height: 1.35;
+}
+
+.wmtc-start-url {
+	margin-top: 0.4em;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.wmtc-theme-analog .wmtc-start {
+	border-color: var(--wmtc-ink);
+	background: var(--wmtc-paper);
+	box-shadow: 0.15em 0.25em 0.9em rgba(61, 47, 31, 0.35);
 }

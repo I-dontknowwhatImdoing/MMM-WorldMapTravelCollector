@@ -37,7 +37,7 @@ describe("node_helper", () => {
 		expect(payload.identifier).toBe("m1");
 		expect(payload.model.views[0].tripIds).toHaveLength(1);
 		expect(payload.model.problems).toHaveLength(1);
-		expect(Log.warn).toHaveBeenCalledWith(expect.stringContaining("[MMM-WorldMapTravelCollector] trips.json row 2"));
+		expect(Log.warn).toHaveBeenCalledWith(expect.stringMatching(/^trips\.json row 2/));
 		h.stop();
 		expect(h.instances.size).toBe(0);
 	});
@@ -79,7 +79,7 @@ describe("node_helper", () => {
 			h.socketNotificationReceived("WMTC_INIT", { identifier: "m3", config: { travelers: ["Alex"], dataDir: dir } });
 			expect(h.sent).toEqual([["WMTC_ERROR", { identifier: "m3", message: "disk on fire" }]]);
 			expect(h.instances.size).toBe(0);
-			expect(Log.error).toHaveBeenCalledWith("[MMM-WorldMapTravelCollector] Could not load trips: disk on fire");
+			expect(Log.error).toHaveBeenCalledWith("Could not load trips: disk on fire");
 		});
 	});
 
@@ -102,12 +102,16 @@ describe("node_helper", () => {
 		h.expressApp = { use: (route, fn) => routes.push([route, fn]) };
 		h.start();
 		expect(routes.map((r) => r[0])).toEqual(["/MMM-WorldMapTravelCollector"]);
-		expect(Log.info).toHaveBeenCalledWith(expect.stringContaining("Trip editor at http://<this mirror's address>:8080/MMM-WorldMapTravelCollector/"));
+		// No MagicMirror config here, so its defaults apply: only the mirror itself is let in.
+		expect(Log.info).toHaveBeenCalledWith(expect.stringMatching(/^Trip editor: http:\/\/.+:8080\/MMM-WorldMapTravelCollector\/$/));
+		expect(Log.warn).toHaveBeenCalledWith(expect.stringContaining("MagicMirror only answers the mirror itself"));
 		expect(h.editorContext()).toBeNull();
 
 		h.socketNotificationReceived("WMTC_INIT", { identifier: "m1", config: { travelers: ["Alex"], dataDir: dir } });
 		h.socketNotificationReceived("WMTC_INIT", { identifier: "m2", config: { travelers: ["Alex", "Sam"], dataDir: dir } });
 		expect(h.editorContext().config.travelers).toEqual(["Alex", "Sam"]);
+		const link = h.sent.find((x) => x[0] === "WMTC_EDITOR")[1];
+		expect(link).toMatchObject({ identifier: "m1", editor: { reachable: false, reason: "address", qr: null } });
 		expect(h.editorContext().dataDir).toBe(dir);
 
 		// The mounted function answers like the editor does.
@@ -121,5 +125,38 @@ describe("node_helper", () => {
 		expect(res.status).toBe(200);
 		expect(JSON.parse(res.body).travelers).toEqual([{ name: "Alex" }, { name: "Sam" }]);
 		h.stop();
+	});
+
+	test("tells the mirror the editor's address, with a QR code, when phones can reach it", () => {
+		const os = require("node:os");
+		const spy = jest.spyOn(os, "networkInterfaces").mockReturnValue({
+			lo: [{ address: "127.0.0.1", family: "IPv4", internal: true }],
+			docker0: [{ address: "172.17.0.1", family: "IPv4", internal: false }],
+			wlan0: [{ address: "192.168.1.20", family: "IPv4", internal: false }]
+		});
+		global.config = { address: "0.0.0.0", port: 8181, ipWhitelist: ["127.0.0.1", "192.168.1.0/24"], modules: [{ module: "MMM-WorldMapTravelCollector", config: { dataDir: dir } }] };
+		try {
+			const h = makeHelper();
+			h.expressApp = { use () {} };
+			h.start();
+			expect(Log.info).toHaveBeenCalledWith("Trip editor: http://192.168.1.20:8181/MMM-WorldMapTravelCollector/");
+			h.socketNotificationReceived("WMTC_INIT", { identifier: "module_0_MMM-WorldMapTravelCollector", config: { travelers: ["Alex"] } });
+			const { editor } = h.sent.find((x) => x[0] === "WMTC_EDITOR")[1];
+			expect(editor).toMatchObject({ url: "http://192.168.1.20:8181/MMM-WorldMapTravelCollector/", reachable: true, reason: "" });
+			expect(editor.qr.size).toBeGreaterThanOrEqual(21);
+			expect(editor.qr.d).toMatch(/^M\d+ \d+h\d+v1h-\d+z/);
+			h.stop();
+
+			// editor: false in MagicMirror's config: nothing to show.
+			global.config.modules[0].config.editor = false;
+			const h2 = makeHelper();
+			h2.expressApp = { use () {} };
+			h2.socketNotificationReceived("WMTC_INIT", { identifier: "module_0_MMM-WorldMapTravelCollector", config: { travelers: ["Alex"], editor: true } });
+			expect(h2.sent.map((x) => x[0])).toEqual(["WMTC_DATA"]);
+			h2.stop();
+		} finally {
+			delete global.config;
+			spy.mockRestore();
+		}
 	});
 });
