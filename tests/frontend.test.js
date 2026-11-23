@@ -642,6 +642,13 @@ describe("stats", () => {
 		expect($$(".wmtc-stat").map((e) => e.textContent)).toEqual(["1 country", "1 city"]);
 	});
 
+	test("the extra stats, with their lead-in words", async () => {
+		const m = await mount({ stats: ["nextTrip", "lastTrip", "daysTraveled"] });
+		data(m);
+		expect($$(".wmtc-stat").map((e) => e.textContent)).toEqual(["Next: Cape Town in 5 months", "Last: Lisbon 20 months ago", "5 days traveled"]);
+		expect(text(".wmtc-stat-nextTrip .wmtc-stat-value")).toBe("Cape Town");
+	});
+
 	test("can be turned off", async () => {
 		const m = await mount({ showStats: false });
 		data(m);

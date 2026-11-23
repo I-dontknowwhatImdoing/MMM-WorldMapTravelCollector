@@ -134,7 +134,9 @@ Copy one into `modules: [ ... ]` and change the names. Every option is described
 
 ## Configuration
 
-Everything is optional except `travelers`. Options go inside the module's `config: { ... }`.
+Everything is optional except `travelers`. Options go inside the module's `config: { ... }`, separated by commas.
+
+Some options take a list, like `views` and `stats`. Write a list in square brackets, with each item in double quotes and commas between them, in the order you want: `stats: ["countries", "nextTrip", "daysTraveled"]`. A list replaces the default list completely, so include every item you want.
 
 ### People and colors
 
@@ -186,7 +188,7 @@ Everything is optional except `travelers`. Options go inside the module's `confi
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `views` | `["all", "together", "solo"]` | The views the mirror takes turns showing: `"all"`; `"together"` (trips everyone took); `"solo"` (one view per traveler: trips they took alone); `"person"` (one per traveler: every trip they were on); `"years"` (one per year with trips, newest first); `"months"` (one per calendar month: all your March trips, any year). Single ones work too: `"solo:Sam"`, `"person:Sam"`, `"year:2025"`, `"month:3"`. Before 1.0 this was called `filters`, which still works |
+| `views` | `["all", "together", "solo"]` | The views the mirror takes turns showing, as a list in square brackets, e.g. `views: ["all", "years", "solo:Sam"]`. Choose from: `"all"`; `"together"` (trips everyone took); `"solo"` (one view per traveler: trips they took alone); `"person"` (one per traveler: every trip they were on); `"years"` (one per year with trips, newest first); `"months"` (one per calendar month: all your March trips, any year). Single ones work too: `"solo:Sam"`, `"person:Sam"`, `"year:2025"`, `"month:3"`. Before 1.0 this was called `filters`, which still works |
 | `defaultView` | `"all"` | The view to start on, e.g. `"together"`, `"solo:Sam"` or `"year:2025"`. Before 1.0 this was `defaultFilter` |
 | `viewSwitcher` | `"auto"` | How views are offered: `"buttons"` (one per view), `"compact"` (one button showing the current view, with ‹ › either side and a dot per view) or `"auto"` (buttons while they fit on one line, compact when they don't) |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
@@ -212,9 +214,30 @@ You can also tap a view button to switch views, and tap the ledger to turn its p
 | Option | Default | Description |
 | --- | --- | --- |
 | `showStats` | `true` | Show the stats line |
-| `stats` | all six | Which stats, in order: `"countries"`, `"cities"`, `"continents"`, `"worldPercent"` (countries visited out of `worldCountryCount`), `"tripsThisYear"`, `"distance"` (a round trip from `home` to every place you visited, as the crow flies; needs `home`) |
+| `stats` | the first six below | Which stats to show, in order, as a list in square brackets with each name in quotes, e.g. `stats: ["countries", "cities", "nextTrip", "daysTraveled"]`. The names are in the table below |
 | `worldCountryCount` | `195` | What "% of the world" divides by |
 | `distanceUnits` | `"km"` | `"km"` or `"mi"` |
+
+Each stat counts the trips in the view on screen: in "Together", only trips you took together. Planned trips only count for `nextTrip`.
+
+| Stat | Shows | Notes |
+| --- | --- | --- |
+| `"countries"` | 15 countries | Shown by default |
+| `"cities"` | 19 cities | Shown by default |
+| `"continents"` | 6/7 continents | Shown by default |
+| `"worldPercent"` | 8% of the world | Countries visited out of `worldCountryCount`. Shown by default |
+| `"tripsThisYear"` | 3 trips in 2026 | Shown by default |
+| `"distance"` | 262,800 km traveled | A round trip from `home` to every place you visited, as the crow flies. Shown by default when `home` is set |
+| `"daysTraveled"` | 142 days traveled | The days of every visit that has them |
+| `"nextTrip"` | Next: Tokyo in 23 days | The soonest planned trip; days to go when it has a start day, else months |
+| `"lastTrip"` | Last: Lisbon 3 months ago | The most recent visit |
+| `"farthest"` | Farthest: Sydney 16,242 km from home | Needs `home` |
+| `"newThisYear"` | 2 new countries in 2026 | Countries you visited for the first time this year |
+| `"mostVisited"` | Most visited: Portugal 6 visits | The country you've been to in the most different months; shown once one has 2 or more |
+| `"longestTrip"` | Longest trip: 21 days in Japan | Days added up per country and month, so Tokyo and Kyoto in one trip count together |
+| `"usStates"` | 12/50 US states | States with a city you visited in the United States |
+
+A stat that has nothing to show yet (no planned trip, no days entered, no `home`) is left out of the line.
 
 ### Ledger
 
@@ -225,7 +248,7 @@ The list of places under the map. Set only what you want to change, e.g. `ledger
 | `enabled` | `true` | Show the ledger |
 | `rows` | `"auto"` | Rows per page. `"auto"` is 5, or more on a tall (portrait) screen when there are trips to fill the space under the map |
 | `columns` | `4` | Columns per page. On a portrait mirror, `2` or `3` leaves room for longer names |
-| `sort` | `"newest"` | `"newest"`, `"oldest"` or `"alpha"` |
+| `sort` | `"newest"` | The order of the ledger, read down each column and then across: `"newest"` (the most recent trip first), `"oldest"` (your first trip first) or `"alpha"` (A to Z by city, or by country for country-only trips; repeat visits to the same place, newest first). Trips in the same month go A to Z |
 | `overflow` | `"cycle"` | When trips don't fit: `"cycle"` turns pages, `"shrink"` makes the text smaller |
 | `pageInterval` | `15` | Seconds per page, for `"cycle"` |
 | `minFontSize` | `10` | Smallest text in pixels, for `"shrink"`. Anything that still doesn't fit becomes "+N more" |

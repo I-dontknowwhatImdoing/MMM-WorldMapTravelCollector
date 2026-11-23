@@ -61,7 +61,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 		// Stats
 		showStats: true,
-		stats: ["countries", "cities", "continents", "worldPercent", "tripsThisYear", "distance"],
+		stats: ["countries", "cities", "continents", "worldPercent", "tripsThisYear", "distance"], // more: "daysTraveled", "nextTrip", "lastTrip", "farthest", "newThisYear", "mostVisited", "longestTrip", "usStates"
 		worldCountryCount: 195,
 		distanceUnits: "km",
 
@@ -70,7 +70,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			enabled: true,
 			rows: "auto", // a number, or "auto": 5, and more on tall screens when there are trips to fill them
 			columns: 4,
-			sort: "newest", // "newest" | "oldest" | "alpha"
+			sort: "newest", // "newest" (most recent first) | "oldest" (first trip first) | "alpha" (A–Z by city)
 			overflow: "cycle", // "cycle" | "shrink"
 			pageInterval: 15, // seconds, for "cycle"
 			minFontSize: 10, // px, for "shrink"
@@ -535,6 +535,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.statsEl.hidden = parts.length === 0 || !view.tripIds.length;
 		for (const p of parts) {
 			const item = el("span", `wmtc-stat wmtc-stat-${p.key}`);
+			if (p.before) item.append(document.createTextNode(`${p.before} `));
 			item.append(el("span", "wmtc-stat-value", p.value), document.createTextNode(` ${p.label}`));
 			this.statsEl.append(item);
 		}
