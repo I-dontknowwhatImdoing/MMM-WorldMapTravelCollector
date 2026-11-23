@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixes from the pre-release review
+
+- Changing a trip's city in the editor now moves its pin. Before, the old city's position was kept.
+- Editor search filters as you type, including trips from trips.csv and the Google Sheet.
+- The spreadsheet column-matching panel shows its drop-downs again.
+- Rows that can't be shown on the mirror can be fixed or deleted from the editor even when they carry an id.
+- Security: the editor's PIN, `editor: false` and the data folder are read from MagicMirror's own config file, so a message sent to the mirror can't switch them off. The editor also only answers at home-network addresses (IP addresses, `localhost`, local names); new option `editorHosts` adds other names.
+- Importing a whole Google Takeout zip no longer reads the raw Records.json (which could use gigabytes of memory on a Pi).
+- Dates: "March 14, 2025", day-first "15/03/2024" and month-first "03/15/2024" are read; unclear dates like 03/04/2025 and impossible ones like 31 February get a clear message; a spreadsheet with a start-date column but no date column works.
+- Several spreadsheets uploaded together each keep their own columns. Very large Timeline files no longer fail.
+- A hidden module no longer restarts its timers when trips change.
+- Backups made in the same moment no longer delete the newest one. Repeated ids in a hand-edited trips.json no longer show the wrong trip.
+
 ### Trips: optional start day
 
 - New optional `start` field (e.g. 2025-03-14). With `days`, a trip has an exact end: the details card shows "14–18 Mar 2025", and fading counts from the end of the trip.

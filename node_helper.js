@@ -30,9 +30,31 @@ module.exports = NodeHelper.create({
 		return latest ? { config: latest.config, dataDir: latest.dataDir, geo: latest.geo, service: latest.service } : null;
 	},
 
+	/**
+	 * This instance's entry in MagicMirror's own config file, found from its identifier
+	 * ("module_<position in config.modules>_<module>"). The settings that guard the editor and the disk
+	 * (editor, editorPin, dataDir) are taken from here, never from the browser's message: anyone who can
+	 * reach MagicMirror's socket can send WMTC_INIT.
+	 * @returns {object|null|undefined} the entry's config; null = no such entry; undefined = no MagicMirror config (preview, tests)
+	 */
+	trustedConfig (identifier) {
+		const modules = global.config && Array.isArray(global.config.modules) ? global.config.modules : null;
+		if (!modules) return undefined;
+		const m = /^module_(\d+)_(.+)$/.exec(String(identifier));
+		const entry = m ? modules[Number(m[1])] : null;
+		if (!entry || entry.disabled === true || entry.module !== m[2] || String(entry.module).split("/").pop() !== this.name) return null;
+		return entry.config && typeof entry.config === "object" ? entry.config : {};
+	},
+
 	socketNotificationReceived (notification, payload) {
-		if (notification !== "WMTC_INIT" || !payload || !payload.identifier) return;
-		const { identifier, config } = payload;
+		if (notification !== "WMTC_INIT" || !payload || !payload.identifier || !payload.config) return;
+		const { identifier } = payload;
+		const trusted = this.trustedConfig(identifier);
+		if (trusted === null) {
+			Log.warn(`[${this.name}] Ignored a start request for ${String(identifier).slice(0, 80)}: it isn't in MagicMirror's config`);
+			return;
+		}
+		const config = trusted ? { ...payload.config, editor: trusted.editor, editorPin: trusted.editorPin, editorHosts: trusted.editorHosts, dataDir: trusted.dataDir } : payload.config;
 		this.stopInstance(identifier);
 
 		const dataDir = config.dataDir ? path.resolve(this.path, config.dataDir) : path.join(this.path, "data");

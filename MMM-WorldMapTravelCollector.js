@@ -23,6 +23,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		// Web editor at http://<mirror>:8080/MMM-WorldMapTravelCollector/
 		editor: true,
 		editorPin: "",
+		editorHosts: [], // extra names the editor may be opened by, e.g. ["mirror.example.net"]
 		homeRadiusKm: 50, // Timeline import: visits this close to home aren't trips
 
 		// Look
@@ -138,7 +139,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const index = this.model.views.findIndex((v) => v.id === wanted);
 			this.viewIndex = index >= 0 ? index : 0;
 			this.render();
-			this.startTimers();
+			// MagicMirror sets `hidden` while the module is hidden; resume() restarts the timers.
+			if (!this.hidden) this.startTimers();
 		} else if (notification === "WMTC_ERROR") {
 			this.error = payload.message;
 			this.render();

@@ -24,6 +24,7 @@ Later (v2+): timeline view (Jan–Dec × years), zoom/focus on a region or city,
 - Ledger defaults 5 rows × 4 columns, newest first, overflow `cycle` (alternative `shrink`).
 - Logic lives in Node (`lib/`), the browser only draws. `lib/layout.js` and `lib/ledger.js` are UMD so both sides use them.
 - MagicMirror merges config shallowly; `start()` fills nested `ledger` options from defaults.
+- Trust: `node_helper.trustedConfig()` maps the instance identifier (`module_<index>_<name>`) to its entry in MagicMirror's `global.config.modules`; `editor`, `editorPin`, `editorHosts` and `dataDir` always come from there, never from the browser's WMTC_INIT (anyone on the socket can send one). Unknown identifiers are ignored. The editor refuses requests whose Host isn't an IP, localhost, a one-word or local-suffix name, or listed in `editorHosts` (DNS rebinding).
 - Editor: `lib/editor-server.js` is a plain `(req, res)` handler (no Express features), mounted by `node_helper` on `this.expressApp` and by `scripts/preview.js`. It serves the most recently started module instance. Changes need the `X-WMTC: 1` header (blocks cross-site requests); `editorPin` comes in `X-WMTC-Pin`. Static page is `editor/` (vanilla JS, no build, all text via `textContent`).
 - Editing (`lib/editing.js`) never drops unreadable rows: they stay at the end of trips.json with ids `row-N` (N = position in the file, so refetch after a save). Saved trips go through `storedTrip`, which drops coordinates equal to the city lookup.
 - Importers: `lib/importers.js` detects the file type (zip/KMZ, KML, GeoJSON, Timeline JSON, CSV) and routes to `import-places.js` / `import-timeline.js`. Uploads use a tiny framing (`packFiles`/`unpackFiles`) instead of multipart. Reverse geocoding is `geocoder.nearest`: population / (km + 2)² within 30 km, else the closest place within `maxKm`.
@@ -43,6 +44,7 @@ npm run preview     # browser preview at http://localhost:8099, editor at /MMM-W
 ```
 
 - Importer fixtures in `tests/fixtures/` are made-up exports in each real Google format; `tests/zip-helper.js` builds zips for tests.
+- `tests/editor-page.test.js` runs editor/editor.js in jsdom against a stubbed API; `tests/fixes-phase1.test.js` holds regression tests for the pre-release review's bugs (B1-B13).
 - Front-end tests run in jsdom with the low-detail world (`world-atlas/countries-110m.json`) for speed.
 - `data/trips.json` and `data/trips.csv` are gitignored (personal data). `data/trips.example.csv` is the sample.
 - Branch per milestone (`milestone-N-name`), open a PR, squash-merge when the owner approves.

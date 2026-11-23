@@ -76,6 +76,7 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `sheetRefreshMinutes` | `30` | How often the sheet is checked |
 | `editor` | `true` | Serve the [trip editor](#the-trip-editor). `false` turns it off |
 | `editorPin` | `""` | A PIN the editor asks for. Empty means no PIN |
+| `editorHosts` | `[]` | The editor opens at IP addresses, `localhost` and local names (`magicmirror`, `mirror.local`, `.lan`, `.home`). List any other name you use for the mirror here, e.g. `["mirror.example.net"]` |
 | `homeRadiusKm` | `50` | Timeline imports leave out visits this close to `home` |
 | `ledger` | see below | The list of places under the map |
 
