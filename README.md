@@ -195,7 +195,7 @@ Some options take a list, like `views` and `stats`. Write a list in square brack
 | --- | --- | --- |
 | `views` | `["all", "together", "solo", "years", "months"]` | The views to offer, as a list in square brackets, e.g. `views: ["all", "years", "solo:Sam"]`. Choose from: `"all"`; `"together"` (trips everyone took); `"solo"` (one view per traveler: trips they took alone); `"person"` (one per traveler: every trip they were on); `"years"` (one per year with trips, newest first); `"months"` (one per calendar month: all your March trips, any year). Single ones work too: `"solo:Sam"`, `"person:Sam"`, `"year:2025"`, `"month:3"`. Before 1.0 this was called `filters`, which still works |
 | `defaultView` | `"all"` | The view to start on, e.g. `"together"`, `"solo:Sam"` or `"year:2025"`. Before 1.0 this was `defaultFilter` |
-| `viewGroups` | `true` | When the views come from more than one group, tabs before the view buttons switch between **People** (all, together, each person), **Years** and **Months**. Only the chosen group's buttons show, and the mirror takes turns through that group. `false` shows every view in one row and takes turns through all of them |
+| `viewGroups` | `true` | When the views come from more than one group, tabs before the view buttons switch between **People** (together, each person), **Years** and **Months**. Each tab shows **All** first, colored the tab's way (people, years or months), then its own buttons. A tab opens on All, and the mirror takes turns through that tab. `false` shows every view in one row and takes turns through all of them |
 | `viewSwitcher` | `"auto"` | How views are offered: `"buttons"` (one per view), `"compact"` (one button showing the current view, with ‹ › either side and a dot per view) or `"auto"` (buttons while they fit on one line, compact when they don't) |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
 | `touchPause` | `120` | Seconds rotation pauses after a tap or a command from another module |
@@ -271,7 +271,7 @@ The list of places under the map. Set only what you want to change, e.g. `ledger
 | `editor` | `true` | Serve the [trip editor](#the-trip-editor). `false` turns it off |
 | `editorPin` | `""` | A PIN the editor asks for, e.g. `"2580"`. Empty means no PIN |
 | `editorHosts` | `[]` | The editor opens at IP addresses, `localhost` and local names (`magicmirror`, `mirror.local`, `.lan`, `.home`). List any other name you use for the mirror here, e.g. `["mirror.example.net"]` |
-| `showEditorLink` | `"auto"` | "Add trips from your phone", with a QR code and the editor's address, on the map. `"auto"`: in the middle when there are no trips yet, and in a corner for the first 10 minutes after each start. `true`: always in the corner. `false`: never |
+| `showEditorLink` | `"auto"` | "Add trips from your phone", with a QR code and the editor's address, on the map. `"auto"`: in the middle when there are no trips yet, and as a small code in the top right of the map for the first 10 minutes after each start. `true`: always in the top right. `false`: never |
 | `homeRadiusKm` | `50` | Timeline imports leave out visits this close to `home` |
 
 ## The trip editor
