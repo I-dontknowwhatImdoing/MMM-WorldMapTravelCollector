@@ -167,6 +167,18 @@ test("B3: the column-matching panel shows a drop-down per column", async () => {
 	expect([...panel.querySelectorAll("span")].map((s) => s.textContent)).toEqual(["Stadt", "Land", "Datum", "Personen"]);
 });
 
+test("a page that was replaced doesn't send its pending import check", async () => {
+	uploadResult = { kind: "timeline", label: "Google Maps Timeline", alsoFound: [], warnings: [], visits: 1, ignoredAtHome: 0, home: null, drafts: [{ city: "Lisbon", country: "PT", date: "2025-03", start: "", days: "", travelers: ["Alex"], lat: "", lon: "", note: "", hint: "", include: true }] };
+	tab("import");
+	const input = $("input[type=file]");
+	Object.defineProperty(input, "files", { value: [{ name: "Timeline.json", arrayBuffer: async () => new ArrayBuffer(2) }] });
+	input.dispatchEvent(new Event("change"));
+	for (let i = 0; i < 40 && !$(".draft"); i++) await flush();
+	document.body.innerHTML = BODY; // the next page (as each test starts with)
+	await wait(400);
+	expect(requests.filter((r) => r.url.includes("import/check"))).toEqual([]);
+});
+
 describe("R6: errors where you look", () => {
 	test("each error shows under its field; the first is focused", async () => {
 		serve = (url, method) => (method === "POST" && url.endsWith("api/trips") ? { status: 422, body: { errors: ["Country is missing", "Date is missing", "No travelers listed", "Something odd"] } } : undefined);
@@ -224,7 +236,7 @@ describe("R8: back, undo and repeat", () => {
 		expect(undo.textContent).toBe("Undo");
 		undo.click();
 		await flush();
-		expect(requests.filter((r) => r.method === "POST").at(-1).body).toMatchObject({ city: "Kyoto", country: "JP", date: "2024-10", travelers: ["Alex"] });
+		expect(requests.filter((r) => r.method === "POST" && r.url === "api/trips").at(-1).body).toMatchObject({ city: "Kyoto", country: "JP", date: "2024-10", travelers: ["Alex"] });
 	});
 
 	test("the phone's Back button returns to the previous editor screen", async () => {

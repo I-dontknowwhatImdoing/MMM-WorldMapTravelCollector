@@ -863,7 +863,8 @@
 		clearTimeout(checkTimer);
 		checkTimer = setTimeout(async () => {
 			const imp = S.imp;
-			if (!imp || !imp.result) return;
+			// Nothing to check once the page has been replaced (or the review closed) in the meantime.
+			if (!imp || !imp.result || !main.isConnected) return;
 			const ticked = imp.result.drafts.map((d, i) => [d, i]).filter(([d]) => d.include);
 			try {
 				const r = await api("POST", "/import/check", { rows: ticked.map(([d]) => draftBody(d)) });
