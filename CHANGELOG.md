@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Trips: optional start day
+
+- New optional `start` field (e.g. 2025-03-14). With `days`, a trip has an exact end: the details card shows "14–18 Mar 2025", and fading counts from the end of the trip.
+- The editor has an optional Day box next to Month and Year, in the form and on each import row. The trip list shows exact dates.
+- Google Maps Timeline imports fill in the start day. A full date in a spreadsheet's date column, or a `start` / "start date" / "arrived" column, sets it too.
+- When two people's entries for the same place and month are combined, the earliest start is kept.
+- The CSV download has a `start` column.
+
 ### Map: views and colors by year or month
 
 - New views: `"years"` in `filters` adds one view per year with trips; `"months"` one per calendar month (all Marches together). Single ones: `"year:2025"`, `"month:3"`. Month names follow MagicMirror's language.

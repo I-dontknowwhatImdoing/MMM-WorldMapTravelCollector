@@ -196,13 +196,14 @@ Each row is one visit to one place. A two-city trip is two rows with the same mo
 | --- | --- | --- | --- |
 | city | no | Lisbon | Leave blank for a country-level visit |
 | country | yes | Portugal, PT or PRT | |
-| date | yes | 2025-03 | Year and month. "March 2025" and full dates work too |
+| date | yes* | 2025-03 | Year and month. "March 2025" works too, and a full date (2025-03-14) also sets the start |
+| start | no | 2025-03-14 | The day you arrived. With `days`, the map knows when the trip ended: the details card shows "14–18 Mar 2025" and fading counts from the end. *With a start, `date` can be left out |
 | days | no | 5 | Days spent there |
 | travelers | yes | Alex; Sam | Names from your config. "both" or "all" means everyone |
 | lat, lon | no | 33.66, -95.55 | Only needed for places the lookup can't find, or to pick a specific one (Paris, Texas) |
 | note | no | Anniversary | |
 
-A month after the current month counts as a planned trip.
+A month after the current month counts as a planned trip. Google Maps Timeline imports fill in `start` and `days` for you.
 
 See [data/trips.example.csv](data/trips.example.csv) for a sample.
 

@@ -221,7 +221,7 @@ describe("API", () => {
 		const res = await call("GET", "/api/export.csv");
 		expect(res.headers.get("content-disposition")).toBe("attachment; filename=\"trips-2026-11-23.csv\"");
 		const lines = res.body.trim().split("\n");
-		expect(lines[0]).toBe("id,city,country,date,days,travelers,lat,lon,note");
+		expect(lines[0]).toBe("id,city,country,date,start,days,travelers,lat,lon,note");
 		expect(lines.slice(1).map((l) => l.split(",").slice(1, 4).join(","))).toEqual(["Lisbon,PT,2025-03", "Rome,IT,2022-09"]);
 		expect(lines[1]).toContain("Alex; Sam");
 	});
