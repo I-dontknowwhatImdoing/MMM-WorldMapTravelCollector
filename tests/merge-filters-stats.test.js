@@ -139,6 +139,23 @@ describe("filters", () => {
 		expect(filterLabel("person:Sam")).toBe("All of Sam's");
 		expect(filterLabel("solo:Sam", { solo: "Solo {name}" })).toBe("Solo Sam");
 		expect(filterLabel("odd:Sam")).toBe("Sam");
+		expect(filterLabel("year:2025")).toBe("2025");
+		expect(filterLabel("year:2025", { year: "Trips in {name}" })).toBe("Trips in 2025");
+		expect(filterLabel("month:3")).toBe("March");
+		expect(filterLabel("month:3", { month: "{name} trips" })).toBe("March trips");
+		expect(filterLabel("month:13")).toBe("month:13");
+	});
+
+	test("year and month views", () => {
+		const trips = [trip({ date: "2024-03" }), trip({ date: "2025-10" }), trip({ date: "2025-03" }), trip({ date: "2027-01" })];
+		expect(expandFilters(["all", "years"], two, trips)).toEqual(["all", "year:2027", "year:2025", "year:2024"]);
+		expect(expandFilters(["months"], two, trips)).toEqual(["month:1", "month:3", "month:10"]);
+		expect(expandFilters(["year:2019", "month:03", "month:13", "year:25", "years"], two, trips)).toEqual(["year:2019", "month:3", "year:2027", "year:2025", "year:2024"]);
+		expect(expandFilters(["years"], ["Alex"])).toEqual(["all"]);
+		expect(filterTrips(trips, "year:2025", two).map((t) => t.date)).toEqual(["2025-10", "2025-03"]);
+		expect(filterTrips(trips, "month:3", two).map((t) => t.date)).toEqual(["2024-03", "2025-03"]);
+		// Year views work with one traveler too.
+		expect(expandFilters(["all", "years"], ["Alex"], trips)).toEqual(["all", "year:2027", "year:2025", "year:2024"]);
 	});
 });
 

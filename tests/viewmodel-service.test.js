@@ -34,6 +34,10 @@ describe("buildViewModel", () => {
 		const all = model.views[0];
 		expect(model.currentMonth).toBe("2026-11");
 		expect(model.today).toBe("2026-11-23");
+		expect(model.years).toEqual(["2019", "2023", "2024", "2025", "2027"]);
+		expect(all.countries.PT.when).toBe("2025-03");
+		expect(all.countries.ZA.when).toBe("2027-04"); // only planned: its planned month
+		expect(all.pins.find((p) => p.city === "Cape Town").when).toBe("2027-04");
 		expect(all.countries.PT.last).toBe("2025-03");
 		expect(all.countries.ZA).toMatchObject({ state: "planned", last: null });
 		expect(all.pins.find((p) => p.city === "Lisbon").last).toBe("2025-03");
@@ -71,10 +75,10 @@ describe("buildViewModel", () => {
 	test("country shading: visited beats planned, colors by group", () => {
 		const all = model.views[0];
 		expect(all.countries).toEqual({
-			PT: { state: "visited", group: "mixed", last: "2025-03", tripIds: ["lis", "lis2"] },
-			IS: { state: "visited", group: "Sam", last: "2023-08", tripIds: expect.arrayContaining(["ice", "rey"]) },
-			US: { state: "visited", group: "Alex", last: "2024-06", tripIds: ["chi"] },
-			ZA: { state: "planned", group: "together", last: null, tripIds: ["cpt"] }
+			PT: { state: "visited", group: "mixed", last: "2025-03", when: "2025-03", tripIds: ["lis", "lis2"] },
+			IS: { state: "visited", group: "Sam", last: "2023-08", when: "2023-08", tripIds: expect.arrayContaining(["ice", "rey"]) },
+			US: { state: "visited", group: "Alex", last: "2024-06", when: "2024-06", tripIds: ["chi"] },
+			ZA: { state: "planned", group: "together", last: null, when: "2027-04", tripIds: ["cpt"] }
 		});
 	});
 

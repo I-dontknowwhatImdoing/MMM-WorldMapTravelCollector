@@ -9,6 +9,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 	defaults: {
 		travelers: [],
 		togetherColor: "#FFD54F",
+		colorBy: "travelers", // what map colors mean: "travelers" (together / each person) | "year" | "month" (Jan–Dec, by season)
+		yearColors: "gradient", // colorBy "year": "gradient" (oldest → newest) | "distinct" (a different color each year) | { 2025: "#E57373" }
+		yearGradient: ["#5C6BC0", "#4DB6AC", "#FFD54F"], // gradient colors, oldest year first
+		monthColors: [], // colorBy "month": 12 colors, January first, to replace the seasonal ones
 		home: null,
 
 		// Data
@@ -333,7 +337,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 					dot.style.setProperty("--wmtc-color", color);
 					chip.append(dot);
 				}
-				chip.append(document.createTextNode(v.label));
+				chip.append(document.createTextNode(this.viewLabel(v)));
 				chip.addEventListener("click", (e) => {
 					e.stopPropagation();
 					this.setView(i, true);
@@ -341,19 +345,80 @@ Module.register("MMM-WorldMapTravelCollector", {
 				});
 				this.chipsEl.append(chip);
 			});
-		} else if (view) {
+		} else if (view && this.colorBy() === "travelers") {
 			// One traveler: a plain key of who's who.
 			for (const name of this.model.travelers) this.legendEl.append(legendItem(name, this.colors.byName[name]));
 		}
+		// Year (or month) chips already show their colors; only add a key when they don't.
+		const by = this.colorBy();
+		const chipsAreKey = views.length > 1 && views.some((v) => v.id.startsWith(by === "year" ? "year:" : "month:"));
+		if (view && by !== "travelers" && !chipsAreKey) this.legendEl.append(...this.colorKey(view));
 		const hasPlanned = view && this.config.showPlanned && (view.pins.some((p) => p.planned) || Object.values(view.countries).some((c) => c.state === "planned"));
 		if (hasPlanned) this.legendEl.append(legendItem("Planned", null));
 	},
 
+	/** The dot on a view chip: the view's color when the map uses that kind of color, else none. */
 	viewColor (id) {
+		const by = this.colorBy();
 		if (id === "all") return null;
+		if (id.startsWith("year:")) return by === "year" ? this.yearColor(id.slice(5)) : null;
+		if (id.startsWith("month:")) return by === "month" ? WMTCLayout.monthColor(Number(id.slice(6)), this.config.monthColors) : null;
+		if (by !== "travelers") return null;
 		if (id === "together") return this.colors.together;
 		const name = id.slice(id.indexOf(":") + 1);
 		return this.colors.byName[name] || null;
+	},
+
+	colorBy () {
+		return this.config.colorBy === "year" || this.config.colorBy === "month" ? this.config.colorBy : "travelers";
+	},
+
+	yearColor (year) {
+		return WMTCLayout.yearColor(year, (this.model && this.model.years) || [], { yearColors: this.config.yearColors, yearGradient: this.config.yearGradient });
+	},
+
+	/** Color for a country or pin: by who went (default), by the year, or by the month of its most recent visit. */
+	placeColor (place) {
+		const by = this.colorBy();
+		if (by === "year" && place.when) return this.yearColor(place.when.slice(0, 4));
+		if (by === "month" && place.when) return WMTCLayout.monthColor(Number(place.when.slice(5, 7)), this.config.monthColors);
+		return WMTCLayout.colorFor(place.group, this.colors);
+	},
+
+	/** "March" in the mirror's language for month views (the server only knows English). */
+	viewLabel (v) {
+		if (v.id.startsWith("month:") && !(this.config.labels && this.config.labels.month)) {
+			return WMTCLedger.monthNames(this.locale, "long")[Number(v.id.slice(6)) - 1] || v.label;
+		}
+		return v.label;
+	},
+
+	/** What the colors mean, when they show years or months rather than people. */
+	colorKey (view) {
+		const by = this.colorBy();
+		// Planned trips are drawn (dashed, in their color) unless showPlanned is off, so the key follows that.
+		const isPlanned = (p) => p.state === "planned" || p.planned === true;
+		const places = [...Object.values(view.countries), ...view.pins].filter((p) => p.when && (this.config.showPlanned || !isPlanned(p)));
+		if (by === "month") {
+			const months = [...new Set(places.map((p) => Number(p.when.slice(5, 7))))].sort((a, b) => a - b);
+			const names = WMTCLedger.monthNames(this.locale, "short");
+			return months.map((m) => legendItem(names[m - 1].replace(/\.$/, ""), WMTCLayout.monthColor(m, this.config.monthColors)));
+		}
+		const years = (this.model.years || []).filter((y) => places.some((p) => p.when.startsWith(y)));
+		if (!years.length) return [];
+		if (this.config.yearColors === "distinct" || (this.config.yearColors && typeof this.config.yearColors === "object") || years.length < 3) {
+			const shown = [...years].reverse();
+			const items = shown.slice(0, 10).map((y) => legendItem(y, this.yearColor(y)));
+			if (shown.length > 10) items.push(el("span", "wmtc-legend-item", "…"));
+			return items;
+		}
+		// A gradient bar from the oldest to the newest year in this view.
+		const bar = el("span", "wmtc-key-gradient");
+		const steps = years.map((y, i) => `${this.yearColor(y)} ${Math.round((i / (years.length - 1)) * 100)}%`);
+		bar.style.setProperty("background", `linear-gradient(to right, ${steps.join(", ")})`);
+		const item = el("span", "wmtc-legend-item wmtc-key");
+		item.append(document.createTextNode(years[0]), bar, document.createTextNode(years[years.length - 1]));
+		return [item];
 	},
 
 	renderStats (view) {
@@ -632,7 +697,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			if (state && (state.state === "visited" || showPlanned)) {
 				attrs.class += ` wmtc-${state.state}`;
 				attrs["data-code"] = f.properties.iso2;
-				attrs.style = `--wmtc-color:${WMTCLayout.colorFor(state.group, this.colors)}${state.state === "visited" ? fadeStyle(state.last) : ""}`;
+				attrs.style = `--wmtc-color:${this.placeColor(state)}${state.state === "visited" ? fadeStyle(state.last) : ""}`;
 				if (analog && state.state === "visited") attrs.filter = `url(#${filterId})`;
 			}
 			const p = svgEl("path", attrs);
@@ -650,7 +715,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const xy = projection([pin.lon, pin.lat]);
 			if (!xy || !Number.isFinite(xy[0])) continue;
 			const r = WMTCLayout.pinRadius(scale.pinRadius, pin.visits);
-			const color = WMTCLayout.colorFor(pin.group, this.colors);
+			const color = this.placeColor(pin);
 			const circle = svgEl("circle", {
 				cx: xy[0].toFixed(1),
 				cy: xy[1].toFixed(1),

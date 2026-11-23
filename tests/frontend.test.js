@@ -19,7 +19,8 @@ for (const g of WORLD.objects.countries.geometries) g.properties.iso2 = byNumeri
 for (const file of ["d3-array/dist/d3-array.min.js", "d3-geo/dist/d3-geo.min.js", "topojson-client/dist/topojson-client.min.js"]) {
 	(0, eval)(fs.readFileSync(path.join(__dirname, "..", "node_modules", file), "utf8"));
 }
-global.WMTCLayout = require("../lib/layout");
+const Layout = require("../lib/layout");
+global.WMTCLayout = Layout;
 global.WMTCLedger = require("../lib/ledger");
 global.Log = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 global.config = { language: "en" };
@@ -241,6 +242,77 @@ describe("map", () => {
 		const quiet = await mount({ showProblems: false });
 		data(quiet, { ...model, problems: [{}] });
 		expect(text(".wmtc-footer")).toBe("");
+	});
+});
+
+describe("color by year or month", () => {
+	const colorOf = (sel) => document.querySelector(sel).style.getPropertyValue("--wmtc-color");
+	const pt = ".wmtc-country[data-code='PT']";
+	const chipDots = () => $$(".wmtc-chip").map((c) => [c.textContent, c.querySelector(".wmtc-dot") ? c.querySelector(".wmtc-dot").style.getPropertyValue("--wmtc-color") : null]);
+
+	test("year gradient on the map, with a key when the view chips are about people", async () => {
+		const m = await mount({ colorBy: "year" });
+		data(m);
+		// Years with trips: 2023, 2024, 2025, 2027. Portugal (2025) sits two thirds along the gradient.
+		expect(colorOf(pt)).toBe(Layout.yearColor("2025", ["2023", "2024", "2025", "2027"]));
+		expect(colorOf(".wmtc-country[data-code='ZA']")).toBe("#FFD54F"); // planned 2027: newest
+		expect(colorOf(".wmtc-pin[data-pin='lisbon|PT']")).toBe(colorOf(pt));
+		// People chips lose their dots: the map isn't colored by people.
+		expect(chipDots().every(([, c]) => c === null)).toBe(true);
+		expect(text(".wmtc-key")).toBe("20232027");
+		expect(document.querySelector(".wmtc-key-gradient").style.background).toContain("linear-gradient");
+	});
+
+	test("distinct year colors and year views: the chips are the key", async () => {
+		const m = await mount({ colorBy: "year", yearColors: "distinct", filters: ["all", "years"] });
+		data(m, build(trips, { filters: ["all", "years"] }));
+		expect(chipDots()).toEqual([
+			["All", null],
+			["2027", Layout.DEFAULT_COLORS[0]],
+			["2025", Layout.DEFAULT_COLORS[1]],
+			["2024", Layout.DEFAULT_COLORS[2]],
+			["2023", Layout.DEFAULT_COLORS[3]]
+		]);
+		expect($$(".wmtc-key")).toHaveLength(0);
+		expect(colorOf(pt)).toBe(Layout.DEFAULT_COLORS[1]);
+		m.setView("year:2024");
+		expect($$(".wmtc-country.wmtc-visited")).toHaveLength(1);
+	});
+
+	test("few years or chosen colors show a swatch per year", async () => {
+		const m = await mount({ colorBy: "year", yearColors: { 2025: "#E57373" } });
+		data(m);
+		expect(colorOf(pt)).toBe("#E57373");
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["2027", "2025", "2024", "2023", "Planned"]);
+		const few = await mount({ colorBy: "year" });
+		data(few, build(trips.slice(0, 2)));
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["2025", "2023"]);
+	});
+
+	test("month colors and month views, in the mirror's language", async () => {
+		const m = await mount({ colorBy: "month", filters: ["all", "months"] });
+		m.locale = "de";
+		data(m, build(trips, { filters: ["all", "months"] }));
+		expect($$(".wmtc-chip").map((c) => c.textContent)).toEqual(["All", "März", "April", "Juni", "August"]);
+		expect(colorOf(pt)).toBe(Layout.monthColor(3));
+		expect($$(".wmtc-key")).toHaveLength(0);
+
+		const key = await mount({ colorBy: "month", monthColors: Array(12).fill("#123456") });
+		data(key);
+		expect(colorOf(pt)).toBe("#123456");
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["Mar", "Apr", "Jun", "Aug", "Planned"]);
+		const hidden = await mount({ colorBy: "month", showPlanned: false });
+		data(hidden);
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["Mar", "Jun", "Aug"]);
+	});
+
+	test("custom month labels and the one-traveler key", async () => {
+		const m = await mount({ filters: ["all", "months"], labels: { month: "{name}!" } });
+		data(m, build(trips, { filters: ["all", "months"], labels: { month: "{name}!" } }));
+		expect($$(".wmtc-chip").map((c) => c.textContent)).toContain("March!");
+		const solo = await mount({ travelers: [{ name: "Alex", color: "#4FC3F7" }], colorBy: "year" });
+		data(solo, build(trips.filter((t) => t.travelers.join() === "Alex"), { travelerNames: ["Alex"] }));
+		expect($$(".wmtc-legend-item").map((i) => i.textContent)).toEqual(["2024"]);
 	});
 });
 

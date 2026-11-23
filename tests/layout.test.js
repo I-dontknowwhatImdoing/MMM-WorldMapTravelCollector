@@ -127,3 +127,37 @@ describe("fadeFactor", () => {
 		expect(L.monthIndex("soon")).toBeNaN();
 	});
 });
+
+describe("year and month colors", () => {
+	const years = ["2018", "2019", "2020", "2021", "2022"];
+	test("gradient: oldest to newest through the stops", () => {
+		expect(L.yearColor("2018", years)).toBe("#5C6BC0");
+		expect(L.yearColor("2020", years)).toBe("#4DB6AC");
+		expect(L.yearColor("2022", years)).toBe("#FFD54F");
+		expect(L.yearColor(2019, years, { yearGradient: ["#000000", "#ffffff"] })).toBe("#404040");
+		expect(L.yearColor("2020", ["2020"])).toBe("#FFD54F"); // one year: the newest color
+		expect(L.yearColor("2020", [], { yearGradient: ["nope"] })).toBe("#FFD54F");
+		expect(L.gradientAt(["#123456"], 0.3)).toBe("#123456");
+		expect(L.gradientAt(["nope"], 0.3)).toBe("#FFD54F");
+		expect(L.gradientAt(["#000", "#fff"], 2)).toBe("#FFFFFF");
+	});
+	test("distinct: newest years first, repeating after the palette runs out", () => {
+		expect(L.yearColor("2022", years, { yearColors: "distinct" })).toBe(L.DEFAULT_COLORS[0]);
+		expect(L.yearColor("2021", years, { yearColors: "distinct" })).toBe(L.DEFAULT_COLORS[1]);
+		expect(L.yearColor("2018", years, { yearColors: "distinct", palette: ["#111", "#222"] })).toBe("#111");
+		expect(L.yearColor("1999", years, { yearColors: "distinct" })).toBe(L.DEFAULT_COLORS[0]);
+	});
+	test("chosen colors for some years; the rest use the gradient", () => {
+		const custom = { yearColors: { 2020: "#E57373", 2021: "not a color" } };
+		expect(L.yearColor("2020", years, custom)).toBe("#E57373");
+		expect(L.yearColor("2021", years, custom)).toBe(L.yearColor("2021", years));
+	});
+	test("months follow the seasons, and can be replaced", () => {
+		expect(L.monthColor(1)).toBe(L.DEFAULT_MONTH_COLORS[0]);
+		expect(L.monthColor(12)).toBe(L.DEFAULT_MONTH_COLORS[11]);
+		const mine = Array.from({ length: 12 }, (_, i) => `#0000${String(i + 10)}`);
+		expect(L.monthColor(3, mine)).toBe("#000012");
+		expect(L.monthColor(3, ["#fff"])).toBe(L.DEFAULT_MONTH_COLORS[2]);
+		expect(L.monthColor("x")).toBe(L.DEFAULT_MONTH_COLORS[0]);
+	});
+});
