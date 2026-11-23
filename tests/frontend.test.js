@@ -280,7 +280,7 @@ describe("color by year or month", () => {
 	});
 
 	test("distinct year colors and year views: the chips are the key", async () => {
-		const m = await mount({ colorBy: "year", yearColors: "distinct", filters: ["all", "years"] });
+		const m = await mount({ viewGroups: false, colorBy: "year", yearColors: "distinct", filters: ["all", "years"] });
 		data(m, build(trips, { filters: ["all", "years"] }));
 		expect(chipDots()).toEqual([
 			["All", null],
@@ -306,7 +306,7 @@ describe("color by year or month", () => {
 	});
 
 	test("month colors and month views, in the mirror's language", async () => {
-		const m = await mount({ colorBy: "month", filters: ["all", "months"] });
+		const m = await mount({ viewGroups: false, colorBy: "month", filters: ["all", "months"] });
 		m.locale = "de";
 		data(m, build(trips, { filters: ["all", "months"] }));
 		expect($$(".wmtc-chip").map((c) => c.textContent)).toEqual(["All", "März", "April", "Juni", "August"]);
@@ -323,7 +323,7 @@ describe("color by year or month", () => {
 	});
 
 	test("custom month labels and the one-traveler key", async () => {
-		const m = await mount({ filters: ["all", "months"], labels: { month: "{name}!" } });
+		const m = await mount({ viewGroups: false, filters: ["all", "months"], labels: { month: "{name}!" } });
 		data(m, build(trips, { filters: ["all", "months"], labels: { month: "{name}!" } }));
 		expect($$(".wmtc-chip").map((c) => c.textContent)).toContain("March!");
 		const solo = await mount({ travelers: [{ name: "Alex", color: "#4FC3F7" }], colorBy: "year" });
@@ -497,7 +497,7 @@ describe("switching views", () => {
 		const both = await mount({ filters: ["all"], views: ["all", "solo"], defaultFilter: "all", defaultView: "solo:Sam" });
 		expect(both.config).toMatchObject({ views: ["all", "solo"], defaultView: "solo:Sam" });
 		const neither = await mount({ filters: "nope", defaultFilter: 3 });
-		expect(neither.config).toMatchObject({ views: ["all", "together", "solo"], defaultView: "all" });
+		expect(neither.config).toMatchObject({ views: ["all", "together", "solo", "years", "months"], defaultView: "all" });
 	});
 
 	test("rotates on a timer and pauses after interaction", async () => {
@@ -748,7 +748,7 @@ describe("phase 3: readable, color-blind-safe colors (R2, R4)", () => {
 	});
 
 	test("colorBy season: four colors, a key, month buttons in their season's color", async () => {
-		const m = await mount({ colorBy: "season", views: ["all", "months"] });
+		const m = await mount({ viewGroups: false, colorBy: "season", views: ["all", "months"] });
 		data(m, build(trips, { filters: ["all", "months"] }));
 		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.DEFAULT_SEASON_COLORS[1]); // March: spring
 		expect(colorOf(".wmtc-country[data-code='IS']")).toBe(Layout.DEFAULT_SEASON_COLORS[2]); // August: summer
@@ -771,7 +771,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 	const yearModel = () => build(trips, { filters: ["all", "years"] });
 
 	test("compact: one button for the view, arrows and a dot per view", async () => {
-		const m = await mount({ viewSwitcher: "compact", colorBy: "year", views: ["all", "years"] });
+		const m = await mount({ viewGroups: false, viewSwitcher: "compact", colorBy: "year", views: ["all", "years"] });
 		data(m, yearModel());
 		expect($$(".wmtc-switcher")).toHaveLength(1);
 		expect(text(".wmtc-switcher-current")).toBe("All");
@@ -790,7 +790,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 	});
 
 	test("auto: buttons while they fit on one line, compact once they wrap", async () => {
-		const m = await mount({ views: ["all", "years"] });
+		const m = await mount({ viewGroups: false, views: ["all", "years"] });
 		data(m, yearModel());
 		expect($$(".wmtc-switcher")).toHaveLength(0);
 		const spy = jest.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function () {
@@ -799,7 +799,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 		try {
 			m.render();
 			expect($$(".wmtc-switcher")).toHaveLength(1);
-			const buttons = await mount({ views: ["all", "years"], viewSwitcher: "buttons" });
+			const buttons = await mount({ viewGroups: false, views: ["all", "years"], viewSwitcher: "buttons" });
 			data(buttons, yearModel());
 			expect($$(".wmtc-switcher")).toHaveLength(0);
 			expect($$(".wmtc-chip")).toHaveLength(5);
@@ -810,7 +810,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 
 	test("many views: a count instead of dots", async () => {
 		const many = Array.from({ length: 22 }, (_, i) => trip({ id: `t${i}`, city: "Lisbon", country: "PT", date: `${2000 + i}-05` }));
-		const m = await mount({ viewSwitcher: "compact", views: ["all", "years"] });
+		const m = await mount({ viewGroups: false, viewSwitcher: "compact", views: ["all", "years"] });
 		data(m, build(many, { filters: ["all", "years"] }));
 		expect(text(".wmtc-switcher-dots")).toBe("1 / 23");
 	});
@@ -985,5 +985,111 @@ describe("AI walkthrough fixes (mirror)", () => {
 		expect(box.querySelectorAll("wbr")).toHaveLength(1); // after "8080/", not inside "http://"
 		m.socketNotificationReceived("WMTC_EDITOR", { identifier: m.identifier, editor: { url, reachable: false, reason: "whitelist", qr: null } });
 		expect($$(".wmtc-start-help").map((e) => e.textContent).at(-1)).toBe("This mirror's address: 192.168.1.20");
+	});
+});
+
+describe("group tabs: People · Years · Months", () => {
+	const ALL_GROUPS = ["all", "together", "solo", "years", "months"];
+	const grouped = () => build(trips, { filters: ALL_GROUPS });
+	const tabs = () => $$(".wmtc-group").map((t) => t.textContent);
+	const activeTab = () => text(".wmtc-group-active");
+	const chips = () => $$(".wmtc-chip").map((c) => c.textContent);
+	const colorOf = (sel) => document.querySelector(sel).style.getPropertyValue("--wmtc-color");
+
+	test("the tabs come first, and only the chosen group's buttons show", async () => {
+		const m = await mount();
+		data(m, grouped());
+		expect(tabs()).toEqual(["People", "Years", "Months"]);
+		expect(activeTab()).toBe("People");
+		expect(chips()).toEqual(["All", "Together", "Alex only", "Sam only"]);
+		expect(document.querySelector(".wmtc-group-active").getAttribute("aria-selected")).toBe("true");
+
+		$$(".wmtc-group")[1].click();
+		expect(activeTab()).toBe("Years");
+		expect(chips()).toEqual(["2027", "2025", "2024", "2023"]);
+		expect(activeChip()).toBe("2025"); // 2027 only has a planned trip: start on the latest year traveled
+		expect(m.pausedUntil).toBeGreaterThan(Date.now());
+
+		$$(".wmtc-group")[2].click();
+		expect(chips()).toEqual(["March", "April", "June", "August"]);
+		// Tapping the group already on screen keeps the view.
+		$$(".wmtc-chip")[1].click();
+		$$(".wmtc-group")[2].click();
+		expect(activeChip()).toBe("April");
+	});
+
+	test("colors follow the group: people, then years (the buttons are the key), then months", async () => {
+		const m = await mount();
+		data(m, grouped());
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe("#FFD54F"); // together
+		m.setView("year:2025");
+		expect(activeTab()).toBe("Years");
+		const years = ["2023", "2024", "2025", "2027"];
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.yearColor("2025", years));
+		expect($$(".wmtc-chip .wmtc-dot")).toHaveLength(4);
+		expect($$(".wmtc-key")).toHaveLength(0);
+		m.setView("month:3");
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.monthColor(3));
+		// A colorBy that's set stays the same in every group.
+		const fixed = await mount({ colorBy: "season" });
+		data(fixed, grouped());
+		fixed.setView("year:2025");
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.DEFAULT_SEASON_COLORS[1]);
+	});
+
+	test("rotation and commands stay inside the group on screen", async () => {
+		const m = await mount({ rotateInterval: 10 });
+		jest.useFakeTimers({ now: Date.now() });
+		data(m, grouped());
+		const seen = [];
+		for (let i = 0; i < 5; i++) {
+			jest.advanceTimersByTime(10000);
+			seen.push(activeChip());
+		}
+		expect(seen).toEqual(["Together", "Alex only", "Sam only", "All", "Together"]);
+		m.notificationReceived("WMTC_SET_VIEW", "year:2024");
+		expect(activeTab()).toBe("Years");
+		m.notificationReceived("WMTC_NEXT_VIEW");
+		expect(activeChip()).toBe("2023");
+		m.notificationReceived("WMTC_NEXT_VIEW");
+		expect(activeChip()).toBe("2027"); // wraps within the years
+		m.notificationReceived("WMTC_PREV_VIEW");
+		expect(activeChip()).toBe("2023");
+	});
+
+	test("a starting view in another group opens on that group", async () => {
+		const m = await mount({ defaultView: "month:6" });
+		data(m, grouped());
+		expect(activeTab()).toBe("Months");
+		expect(activeChip()).toBe("June");
+	});
+
+	test("no tabs with viewGroups: false, or when every view is in one group", async () => {
+		const flat = await mount({ viewGroups: false });
+		data(flat, grouped());
+		expect(tabs()).toEqual([]);
+		expect(chips()).toHaveLength(12);
+		const people = await mount();
+		data(people);
+		expect(tabs()).toEqual([]);
+		expect(chips()).toEqual(["All", "Together", "Alex only", "Sam only"]);
+	});
+
+	test("tab names: one traveler's first tab is All; labels can rename them", async () => {
+		const solo = await mount({ travelers: ["Alex"], labels: { years: "Jahre" } });
+		data(solo, build(trips.filter((t) => t.travelers.join() === "Alex"), { travelerNames: ["Alex"], filters: ALL_GROUPS }));
+		expect(tabs()).toEqual(["All", "Jahre", "Months"]);
+	});
+
+	test("compact: the tabs stay, the ‹ › button steps through the group", async () => {
+		const m = await mount({ viewSwitcher: "compact" });
+		data(m, grouped());
+		m.setView("year:2025");
+		expect(tabs()).toEqual(["People", "Years", "Months"]);
+		expect(text(".wmtc-switcher-current")).toBe("2025");
+		expect($$(".wmtc-pos")).toHaveLength(4);
+		expect(document.querySelector(".wmtc-pos-active")).toBe($$(".wmtc-pos")[1]);
+		document.querySelector("[aria-label='Next view']").click();
+		expect(text(".wmtc-switcher-current")).toBe("2024");
 	});
 });

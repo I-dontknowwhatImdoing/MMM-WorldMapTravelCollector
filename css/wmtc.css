@@ -807,3 +807,49 @@
 	background: var(--wmtc-paper);
 	box-shadow: 0.15em 0.25em 0.9em rgba(61, 47, 31, 0.35);
 }
+
+/* Group tabs (viewGroups): People · Years · Months, before the view buttons */
+
+.wmtc-groups {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 0.6em;
+	padding: 0.15em;
+	border: 1px solid var(--wmtc-faint);
+	border-radius: 999px;
+}
+
+.wmtc-group {
+	padding: 0.2em 0.75em;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wmtc-muted);
+	font: inherit;
+	font-size: 0.72em;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.wmtc-group-active {
+	background: var(--wmtc-text);
+	color: #000;
+	font-weight: 600;
+}
+
+.wmtc-theme-analog .wmtc-groups {
+	border-color: var(--wmtc-faint);
+}
+
+.wmtc-theme-analog .wmtc-group {
+	font-style: italic;
+	text-transform: none;
+	letter-spacing: 0.02em;
+	font-size: 0.85em;
+}
+
+.wmtc-theme-analog .wmtc-group-active {
+	background: var(--wmtc-ink);
+	color: var(--wmtc-paper);
+}
