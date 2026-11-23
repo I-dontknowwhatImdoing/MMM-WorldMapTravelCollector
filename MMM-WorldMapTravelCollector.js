@@ -48,8 +48,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		showProblems: true,
 
 		// Views
-		filters: ["all", "together", "solo"],
-		defaultFilter: "all",
+		views: ["all", "together", "solo"], // also "person", "years", "months", "year:2025", "month:3" (was called filters)
+		defaultView: "all", // the view to start on (was called defaultFilter)
 		viewSwitcher: "auto", // "buttons" | "compact" (one ‹ 2025 › button) | "auto" (compact when the buttons don't fit on one line)
 		rotateInterval: 30, // seconds between views; 0 = off
 		touchPause: 120, // seconds rotation pauses after a tap or a command
@@ -99,6 +99,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 	start () {
 		// MagicMirror merges config shallowly, so fill in nested ledger options ourselves.
 		this.config.ledger = Object.assign({}, this.defaults.ledger, this.config.ledger || {});
+		// Before 1.0, views were called filters: the old names still work when the new ones aren't set.
+		const unset = (key) => JSON.stringify(this.config[key]) === JSON.stringify(this.defaults[key]);
+		if (Array.isArray(this.config.filters) && unset("views")) this.config.views = this.config.filters;
+		if (typeof this.config.defaultFilter === "string" && unset("defaultView")) this.config.defaultView = this.config.defaultFilter;
 		this.model = null;
 		this.features = null;
 		this.viewIndex = 0;
@@ -141,9 +145,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 	socketNotificationReceived (notification, payload) {
 		if (!payload || payload.identifier !== this.identifier) return;
 		if (notification === "WMTC_DATA") {
-			// Keep showing the same view after a data refresh; on first load, start on defaultFilter.
+			// Keep showing the same view after a data refresh; on first load, start on defaultView.
 			const current = this.currentView();
-			const wanted = current ? current.id : this.config.defaultFilter;
+			const wanted = current ? current.id : this.config.defaultView;
 			this.model = payload.model;
 			this.error = null;
 			const index = this.model.views.findIndex((v) => v.id === wanted);
@@ -166,21 +170,25 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 	/**
 	 * Commands from other modules (remote control, buttons, voice):
-	 *   WMTC_SET_FILTER "together" | { filter: "solo:Sam" }
-	 *   WMTC_NEXT_FILTER, WMTC_PREV_FILTER, WMTC_NEXT_PAGE
+	 *   WMTC_SET_VIEW "together" | { view: "solo:Sam" }
+	 *   WMTC_NEXT_VIEW, WMTC_PREV_VIEW, WMTC_NEXT_PAGE
 	 *   WMTC_SET_THEME "digital" | "analog"
+	 * The names from before 1.0 (WMTC_SET_FILTER, { filter }, WMTC_NEXT_FILTER, WMTC_PREV_FILTER) still work.
 	 */
 	notificationReceived (notification, payload) {
 		if (!/^WMTC_/.test(notification)) return;
-		const value = payload && typeof payload === "object" ? payload.filter || payload.theme : payload;
+		const value = payload && typeof payload === "object" ? payload.view || payload.filter || payload.theme : payload;
 		switch (notification) {
+			case "WMTC_SET_VIEW":
 			case "WMTC_SET_FILTER":
 				if (this.setView(value, true)) this.pause();
 				break;
+			case "WMTC_NEXT_VIEW":
 			case "WMTC_NEXT_FILTER":
 				this.stepView(1);
 				this.pause();
 				break;
+			case "WMTC_PREV_VIEW":
 			case "WMTC_PREV_FILTER":
 				this.stepView(-1);
 				this.pause();

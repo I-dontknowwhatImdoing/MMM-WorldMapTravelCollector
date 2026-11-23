@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: MagicMirror² forum
+    url: https://forum.magicmirror.builders/
+    about: General questions about setting up MagicMirror itself

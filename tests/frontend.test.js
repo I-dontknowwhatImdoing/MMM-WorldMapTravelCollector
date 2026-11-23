@@ -480,12 +480,24 @@ describe("switching views", () => {
 	});
 
 	test("starts on the configured default view", async () => {
-		const m = await mount({ defaultFilter: "together" });
+		const m = await mount({ defaultView: "together" });
 		data(m);
 		expect(activeChip()).toBe("Together");
-		const m2 = await mount({ defaultFilter: "solo:Nobody" });
+		const m2 = await mount({ defaultView: "solo:Nobody" });
 		data(m2);
 		expect(activeChip()).toBe("All");
+	});
+
+	test("the names from before 1.0 (filters, defaultFilter) still work; the new ones win", async () => {
+		const old = await mount({ filters: ["all", "years"], defaultFilter: "year:2024" });
+		expect(old.config).toMatchObject({ views: ["all", "years"], defaultView: "year:2024" });
+		expect(old.sent[0][1].config.views).toEqual(["all", "years"]);
+		data(old, build(trips, { filters: ["all", "years"] }));
+		expect(activeChip()).toBe("2024");
+		const both = await mount({ filters: ["all"], views: ["all", "solo"], defaultFilter: "all", defaultView: "solo:Sam" });
+		expect(both.config).toMatchObject({ views: ["all", "solo"], defaultView: "solo:Sam" });
+		const neither = await mount({ filters: "nope", defaultFilter: 3 });
+		expect(neither.config).toMatchObject({ views: ["all", "together", "solo"], defaultView: "all" });
 	});
 
 	test("rotates on a timer and pauses after interaction", async () => {
@@ -531,6 +543,15 @@ describe("switching views", () => {
 		m.notificationReceived("WMTC_PREV_FILTER");
 		expect(activeChip()).toBe("Together");
 		m.notificationReceived("WMTC_SET_FILTER", "nonsense");
+		expect(activeChip()).toBe("Together");
+		// The names since 1.0.
+		m.notificationReceived("WMTC_SET_VIEW", { view: "solo:Sam" });
+		expect(activeChip()).toBe("Sam only");
+		m.notificationReceived("WMTC_NEXT_VIEW");
+		expect(activeChip()).toBe("All");
+		m.notificationReceived("WMTC_PREV_VIEW");
+		expect(activeChip()).toBe("Sam only");
+		m.notificationReceived("WMTC_SET_VIEW", "together");
 		expect(activeChip()).toBe("Together");
 		m.notificationReceived("CLOCK_MINUTE", {});
 		m.notificationReceived("WMTC_UNKNOWN", {});
@@ -720,7 +741,7 @@ describe("phase 3: readable, color-blind-safe colors (R2, R4)", () => {
 	});
 
 	test("colorBy season: four colors, a key, month buttons in their season's color", async () => {
-		const m = await mount({ colorBy: "season", filters: ["all", "months"] });
+		const m = await mount({ colorBy: "season", views: ["all", "months"] });
 		data(m, build(trips, { filters: ["all", "months"] }));
 		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.DEFAULT_SEASON_COLORS[1]); // March: spring
 		expect(colorOf(".wmtc-country[data-code='IS']")).toBe(Layout.DEFAULT_SEASON_COLORS[2]); // August: summer
@@ -743,7 +764,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 	const yearModel = () => build(trips, { filters: ["all", "years"] });
 
 	test("compact: one button for the view, arrows and a dot per view", async () => {
-		const m = await mount({ viewSwitcher: "compact", colorBy: "year", filters: ["all", "years"] });
+		const m = await mount({ viewSwitcher: "compact", colorBy: "year", views: ["all", "years"] });
 		data(m, yearModel());
 		expect($$(".wmtc-switcher")).toHaveLength(1);
 		expect(text(".wmtc-switcher-current")).toBe("All");
@@ -762,7 +783,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 	});
 
 	test("auto: buttons while they fit on one line, compact once they wrap", async () => {
-		const m = await mount({ filters: ["all", "years"] });
+		const m = await mount({ views: ["all", "years"] });
 		data(m, yearModel());
 		expect($$(".wmtc-switcher")).toHaveLength(0);
 		const spy = jest.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function () {
@@ -771,7 +792,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 		try {
 			m.render();
 			expect($$(".wmtc-switcher")).toHaveLength(1);
-			const buttons = await mount({ filters: ["all", "years"], viewSwitcher: "buttons" });
+			const buttons = await mount({ views: ["all", "years"], viewSwitcher: "buttons" });
 			data(buttons, yearModel());
 			expect($$(".wmtc-switcher")).toHaveLength(0);
 			expect($$(".wmtc-chip")).toHaveLength(5);
@@ -782,7 +803,7 @@ describe("phase 3: compact view switcher (R3)", () => {
 
 	test("many views: a count instead of dots", async () => {
 		const many = Array.from({ length: 22 }, (_, i) => trip({ id: `t${i}`, city: "Lisbon", country: "PT", date: `${2000 + i}-05` }));
-		const m = await mount({ viewSwitcher: "compact", filters: ["all", "years"] });
+		const m = await mount({ viewSwitcher: "compact", views: ["all", "years"] });
 		data(m, build(many, { filters: ["all", "years"] }));
 		expect(text(".wmtc-switcher-dots")).toBe("1 / 23");
 	});
