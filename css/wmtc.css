@@ -757,12 +757,28 @@
 	font-size: 1.05em;
 }
 
+/* A small tag in the top right of the map: the code, a short line and the address under it */
 .wmtc-start-corner {
-	left: 0.3em;
-	bottom: 0.3em;
-	max-width: min(32em, calc(100% - 1em));
-	padding: 0.6em 0.8em;
-	font-size: 0.72em;
+	top: 0;
+	right: 0;
+	flex-direction: column;
+	gap: 0.4em;
+	max-width: min(14em, calc(100% - 1em));
+	padding: 0.5em;
+	font-size: 0.6em;
+	text-align: center;
+}
+
+.wmtc-start-corner .wmtc-start-title {
+	margin-bottom: 0.15em;
+	font-size: 1.1em;
+}
+
+.wmtc-start-corner .wmtc-start-url {
+	margin-top: 0;
+	font-size: 0.85em;
+	font-weight: 400;
+	color: var(--wmtc-muted);
 }
 
 .wmtc-qr {
@@ -772,9 +788,10 @@
 	border-radius: 0.3em;
 }
 
+/* Small, but never under about 2 pixels per square, so a phone can still read it */
 .wmtc-start-corner .wmtc-qr {
-	width: 10em;
-	height: 10em;
+	width: clamp(80px, 9em, 150px);
+	height: clamp(80px, 9em, 150px);
 }
 
 .wmtc-start-title {

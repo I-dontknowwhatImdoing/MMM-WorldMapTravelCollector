@@ -226,6 +226,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const changed = index !== this.viewIndex;
 		this.viewIndex = index;
 		this.page = 0;
+		// "All" belongs to every tab, so it keeps the tab on screen; any other view picks its own tab.
+		const g = this.viewGroup(this.model.views[index].id);
+		if (g) this.group = g;
 		this.render();
 		if (changed && animate) this.fadeIn();
 		return true;
@@ -242,7 +245,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 	},
 
 	/** "people" (all, together, solo, person), "years" or "months". */
+	/** "people" (together, solo, person), "years" or "months"; null for "all", which is in every group. */
 	viewGroup (id) {
+		if (id === "all") return null;
 		if (String(id).startsWith("year:")) return "years";
 		if (String(id).startsWith("month:")) return "months";
 		return "people";
@@ -254,26 +259,42 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const list = [];
 		for (const v of this.model.views) {
 			const g = this.viewGroup(v.id);
-			if (!list.includes(g)) list.push(g);
+			if (g && !list.includes(g)) list.push(g);
 		}
 		return list.length > 1 ? list : [];
 	},
 
-	/** Where a group opens: its first view with a trip already taken (not a planned-only year), else its first. */
+	/** The tab on screen (null when there are no tabs). */
+	currentGroup () {
+		const groups = this.groups();
+		if (!groups.length) return null;
+		if (groups.includes(this.group)) return this.group;
+		// Not chosen yet (the start): the starting view's own tab, else the first. Remembered, so "All" keeps it.
+		const view = this.currentView();
+		const own = view && this.viewGroup(view.id);
+		this.group = own && groups.includes(own) ? own : groups[0];
+		return this.group;
+	},
+
+	/**
+	 * Where a group opens: "All" when there is one (all trips, in that group's colors); else its first view with
+	 * a trip already taken (not a planned-only year), else its first view.
+	 */
 	groupStart (group) {
 		const views = this.model.views;
+		const all = views.findIndex((v) => v.id === "all");
+		if (all >= 0) return all;
 		const inGroup = views.map((v, i) => (this.viewGroup(v.id) === group ? i : -1)).filter((i) => i >= 0);
 		const visited = inGroup.find((i) => views[i].tripIds.some((id) => this.model.trips[id] && !this.model.trips[id].planned));
 		return visited ?? inGroup[0];
 	},
 
-	/** Positions of the views in the current group (all views when there are no tabs). */
+	/** Positions of the views in the current group, "All" included (all views when there are no tabs). */
 	groupIndices () {
 		const views = this.model ? this.model.views : [];
-		const current = views[this.viewIndex];
-		if (!this.groups().length || !current) return views.map((_, i) => i);
-		const g = this.viewGroup(current.id);
-		return views.map((v, i) => (this.viewGroup(v.id) === g ? i : -1)).filter((i) => i >= 0);
+		const g = this.currentGroup();
+		if (!g) return views.map((_, i) => i);
+		return views.map((v, i) => (v.id === "all" || this.viewGroup(v.id) === g ? i : -1)).filter((i) => i >= 0);
 	},
 
 	setTheme (theme) {
@@ -436,8 +457,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const box = el("div", "wmtc-groups");
 		box.setAttribute("role", "tablist");
 		const labels = this.config.labels || {};
-		const names = { people: this.model.travelers.length > 1 ? "People" : "All", years: "Years", months: "Months" };
-		const current = this.viewGroup(this.currentView().id);
+		const names = { people: "People", years: "Years", months: "Months" };
+		const current = this.currentGroup();
 		for (const g of groups) {
 			const tab = el("button", g === current ? "wmtc-group wmtc-group-active" : "wmtc-group", labels[g] || names[g]);
 			tab.type = "button";
@@ -445,7 +466,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 			tab.setAttribute("aria-selected", String(g === current));
 			tab.addEventListener("click", (e) => {
 				e.stopPropagation();
-				if (g !== current) this.setView(this.groupStart(g), true);
+				if (g !== current) {
+					this.group = g;
+					this.setView(this.groupStart(g), true);
+				}
 				this.pause();
 			});
 			box.append(tab);
@@ -539,7 +563,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (["travelers", "year", "month", "season"].includes(this.config.colorBy)) return this.config.colorBy;
 		const view = this.currentView();
 		if (this.config.colorBy !== "auto" || !view) return "travelers";
-		const g = this.viewGroup(view.id);
+		// "All" takes the colors of the tab it's shown in.
+		const g = this.currentGroup() || this.viewGroup(view.id);
 		return g === "years" ? "year" : g === "months" ? "month" : "travelers";
 	},
 
@@ -1138,9 +1163,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const card = el("div", `wmtc-start wmtc-start-${mode}`);
 		if (link.reachable && link.qr) card.append(qrSvg(link.qr));
 		const words = el("div", "wmtc-start-text");
-		words.append(el("div", "wmtc-start-title", "Add trips from your phone"));
+		// The corner card is a small tag under the QR code; the full card (no trips yet) explains more.
+		words.append(el("div", "wmtc-start-title", mode === "corner" && link.reachable ? "Scan to add trips" : "Add trips from your phone"));
 		if (link.reachable) {
-			words.append(el("div", "wmtc-start-help", mode === "full" ? "Scan the code, or open this address on a phone on the same Wi-Fi:" : "Scan the code, or open:"));
+			if (mode === "full") words.append(el("div", "wmtc-start-help", "Scan the code, or open this address on a phone on the same Wi-Fi:"));
 			words.append(urlLines(link.url));
 		} else {
 			words.append(el("div", "wmtc-start-help", link.reason === "network"

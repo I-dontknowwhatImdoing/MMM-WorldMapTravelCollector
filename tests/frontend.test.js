@@ -997,7 +997,7 @@ describe("group tabs: People · Years · Months", () => {
 	const chips = () => $$(".wmtc-chip").map((c) => c.textContent);
 	const colorOf = (sel) => document.querySelector(sel).style.getPropertyValue("--wmtc-color");
 
-	test("the tabs come first, and only the chosen group's buttons show", async () => {
+	test("the tabs come first; each shows \"All\" and its own buttons", async () => {
 		const m = await mount();
 		data(m, grouped());
 		expect(tabs()).toEqual(["People", "Years", "Months"]);
@@ -1007,16 +1007,32 @@ describe("group tabs: People · Years · Months", () => {
 
 		$$(".wmtc-group")[1].click();
 		expect(activeTab()).toBe("Years");
-		expect(chips()).toEqual(["2027", "2025", "2024", "2023"]);
-		expect(activeChip()).toBe("2025"); // 2027 only has a planned trip: start on the latest year traveled
+		expect(chips()).toEqual(["All", "2027", "2025", "2024", "2023"]);
+		expect(activeChip()).toBe("All"); // a tab opens on All
 		expect(m.pausedUntil).toBeGreaterThan(Date.now());
 
 		$$(".wmtc-group")[2].click();
-		expect(chips()).toEqual(["March", "April", "June", "August"]);
-		// Tapping the group already on screen keeps the view.
-		$$(".wmtc-chip")[1].click();
+		expect(activeTab()).toBe("Months");
+		expect(chips()).toEqual(["All", "March", "April", "June", "August"]);
+		// Tapping the tab already on screen keeps the view.
+		$$(".wmtc-chip")[2].click();
 		$$(".wmtc-group")[2].click();
 		expect(activeChip()).toBe("April");
+		// Tapping All keeps the tab.
+		$$(".wmtc-chip")[0].click();
+		expect(activeTab()).toBe("Months");
+		expect(chips()).toEqual(["All", "March", "April", "June", "August"]);
+	});
+
+	test("All takes the colors of the tab it's in", async () => {
+		const m = await mount();
+		data(m, grouped());
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe("#FFD54F"); // People: together
+		$$(".wmtc-group")[1].click();
+		expect(activeChip()).toBe("All");
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.yearColor("2025", ["2023", "2024", "2025", "2027"]));
+		$$(".wmtc-group")[2].click();
+		expect(colorOf(".wmtc-country[data-code='PT']")).toBe(Layout.monthColor(3));
 	});
 
 	test("colors follow the group: people, then years (the buttons are the key), then months", async () => {
@@ -1053,16 +1069,24 @@ describe("group tabs: People · Years · Months", () => {
 		m.notificationReceived("WMTC_NEXT_VIEW");
 		expect(activeChip()).toBe("2023");
 		m.notificationReceived("WMTC_NEXT_VIEW");
-		expect(activeChip()).toBe("2027"); // wraps within the years
+		expect(activeChip()).toBe("All"); // wraps to the years' All, staying on Years
+		expect(activeTab()).toBe("Years");
+		m.notificationReceived("WMTC_NEXT_VIEW");
+		expect(activeChip()).toBe("2027");
+		m.notificationReceived("WMTC_PREV_VIEW");
 		m.notificationReceived("WMTC_PREV_VIEW");
 		expect(activeChip()).toBe("2023");
 	});
 
-	test("a starting view in another group opens on that group", async () => {
-		const m = await mount({ defaultView: "month:6" });
+	test("a starting view in another group opens on that group, and its All stays there", async () => {
+		const m = await mount({ defaultView: "month:6", rotateInterval: 10 });
+		jest.useFakeTimers({ now: Date.now() });
 		data(m, grouped());
 		expect(activeTab()).toBe("Months");
 		expect(activeChip()).toBe("June");
+		jest.advanceTimersByTime(20000); // June → August → All
+		expect(activeChip()).toBe("All");
+		expect(activeTab()).toBe("Months");
 	});
 
 	test("no tabs with viewGroups: false, or when every view is in one group", async () => {
@@ -1076,10 +1100,19 @@ describe("group tabs: People · Years · Months", () => {
 		expect(chips()).toEqual(["All", "Together", "Alex only", "Sam only"]);
 	});
 
-	test("tab names: one traveler's first tab is All; labels can rename them", async () => {
+	test("one traveler has no People tab (it would only hold All); labels rename tabs", async () => {
 		const solo = await mount({ travelers: ["Alex"], labels: { years: "Jahre" } });
 		data(solo, build(trips.filter((t) => t.travelers.join() === "Alex"), { travelerNames: ["Alex"], filters: ALL_GROUPS }));
-		expect(tabs()).toEqual(["All", "Jahre", "Months"]);
+		expect(tabs()).toEqual(["Jahre", "Months"]);
+		expect(chips()).toEqual(["All", "2024"]);
+	});
+
+	test("without an All view, a tab opens on its first year traveled", async () => {
+		const m = await mount();
+		data(m, build(trips, { filters: ["together", "solo", "years"] }));
+		$$(".wmtc-group")[1].click();
+		expect(chips()).toEqual(["2027", "2025", "2024", "2023"]);
+		expect(activeChip()).toBe("2025"); // 2027 only has a planned trip
 	});
 
 	test("compact: the tabs stay, the ‹ › button steps through the group", async () => {
@@ -1088,8 +1121,8 @@ describe("group tabs: People · Years · Months", () => {
 		m.setView("year:2025");
 		expect(tabs()).toEqual(["People", "Years", "Months"]);
 		expect(text(".wmtc-switcher-current")).toBe("2025");
-		expect($$(".wmtc-pos")).toHaveLength(4);
-		expect(document.querySelector(".wmtc-pos-active")).toBe($$(".wmtc-pos")[1]);
+		expect($$(".wmtc-pos")).toHaveLength(5); // All and the 4 years
+		expect(document.querySelector(".wmtc-pos-active")).toBe($$(".wmtc-pos")[2]);
 		document.querySelector("[aria-label='Next view']").click();
 		expect(text(".wmtc-switcher-current")).toBe("2024");
 	});

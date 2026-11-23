@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### All in every tab; a smaller QR code
+
+- Each tab (People, Years, Months) starts with **All**, so every trip is one tap away whichever tab is on screen. In Years it shows all trips colored by year, in Months colored by month. A tab now opens on All, and All keeps the tab it's in.
+- With one traveler there's no People tab (it would only hold All).
+- The "Scan to add trips" code that shows for 10 minutes after a start is now a small tag in the top right of the map, instead of a large card in the bottom left. It still scans on an 800×480 screen.
+
 ### Pins only by default
 
 - New option `shadeCountries`, `false` by default: the map shows pins only, and countries stay plain. A trip without a city (a road trip, "Iceland") gets a pin in the middle of its country. `shadeCountries: true` brings back the shaded countries and dashed outlines for planned trips.
