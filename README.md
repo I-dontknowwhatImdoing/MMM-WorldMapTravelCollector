@@ -46,12 +46,14 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `theme` | `"digital"` | `"digital"` (light lines on black, for mirrors) or `"analog"` (paper and ink, for TVs and frames) |
 | `layout` | `"fullscreen"` | `"fullscreen"` (use a `fullscreen_below`/`fullscreen_above` position) or `"centered"` (any position) |
 | `maxWidth`, `maxHeight` | `"90%"`, `"80%"` | Size when `layout` is `"centered"`. Percentages are of the screen |
-| `projection` | `"equalEarth"` | `"equalEarth"`, `"naturalEarth"` or `"mercator"` |
+| `projection` | `"equalEarth"` | The map's shape: `"equalEarth"` (curved edges, true sizes), `"naturalEarth"` (less curved), `"equirectangular"` (a flat rectangle that fills the width) or `"mercator"` (flat, but countries near the poles look much bigger) |
 | `hideAntarctica` | `true` | Leave Antarctica off the map |
 | `filters` | `["all", "together", "solo"]` | Views to offer. `"solo"` adds one per traveler; `"person"` adds "every trip with this person" |
 | `defaultFilter` | `"all"` | View to start on, e.g. `"together"` or `"solo:Sam"` |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
 | `touchPause` | `120` | Seconds rotation pauses after a tap or a command |
+| `details` | `true` | Tap (or click) a pin or a country to see its trips: when, how many days, who went, notes, and for a country the number of trips and cities, first and latest visit |
+| `detailsTimeout` | `20` | Seconds before the details card closes by itself. `0` keeps it open until you tap × or somewhere else |
 | `showLegend` | `true` | Show the view chips (they double as the color key) |
 | `showStats` | `true` | Show the stats line |
 | `stats` | all six | Which stats, in order: `"countries"`, `"cities"`, `"continents"`, `"worldPercent"`, `"tripsThisYear"`, `"distance"` |
@@ -61,7 +63,8 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `highlightNewest` | `true` | Gently pulse the most recent trip |
 | `fadeByAge` | `false` | Draw places you visited long ago fainter, and recent ones in full color |
 | `fadeStrength` | `0.6` | How much the oldest places fade: `0` is no fading, `0.95` almost hides them |
-| `fadeYears` | `10` | How many years it takes to reach the full fade. Places visited this long ago or longer all look the same |
+| `fadeUnit` | `"years"` | What `fadeAmount` counts: `"years"`, `"months"` or `"days"` |
+| `fadeAmount` | `10` | How many years, months or days it takes to reach the full fade. Places visited this long ago or longer all look the same. Trips are stored by month, so with `"days"` a trip counts as the 15th of its month |
 | `animations` | `true` | Turn off all motion |
 | `showProblems` | `true` | Show a note when rows in your trips file were skipped |
 | `dataDir` | module's `data/` | Folder holding `trips.json` / `trips.csv` |
@@ -166,7 +169,7 @@ Other modules (remote control, buttons, voice) can send these notifications:
 | `WMTC_NEXT_PAGE` | none | Turn the ledger page |
 | `WMTC_SET_THEME` | `"digital"` or `"analog"` | Switch theme |
 
-On a touch screen, tap a view chip to switch views, or tap the ledger to turn the page.
+On a touch screen, tap a view chip to switch views, or tap the ledger to turn the page. Tap a pin or a country on the map to see its trips; tap anywhere else to close the card. (The same works with a mouse in a browser.)
 
 Colors and sizes are CSS variables, so you can restyle the module in `css/custom.css`:
 

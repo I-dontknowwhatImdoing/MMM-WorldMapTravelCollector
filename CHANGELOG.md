@@ -2,9 +2,16 @@
 
 ## Unreleased
 
+### Map: details on tap, flat map shape
+
+- Tap a pin to see that city's visits (month, days, who went, notes) and a summary when there are several.
+- Tap a country to see its number of trips and cities, days in total, first and latest visit, the next planned trip, who went and its cities.
+- Taps pick the nearest pin, so cities close together (Lisbon and Porto) are both easy to tap. The card stays on screen near edges, pauses view rotation, and closes after `detailsTimeout` seconds, with ×, or with a tap elsewhere. `details: false` turns it off.
+- New map shape: `projection: "equirectangular"`, a flat rectangle that fills the width.
+
 ### Map: fade older trips
 
-- New `fadeByAge` option: countries and pins you visited long ago are drawn fainter, and recent ones in full color. `fadeStrength` sets how much (0 to 0.95) and `fadeYears` how quickly. Off by default; planned trips never fade.
+- New `fadeByAge` option: countries and pins you visited long ago are drawn fainter, and recent ones in full color. `fadeStrength` sets how much (0 to 0.95). `fadeUnit` (`"years"`, `"months"` or `"days"`) and `fadeAmount` set how quickly, e.g. `fadeUnit: "months", fadeAmount: 18`. Off by default; planned trips never fade.
 
 ### Milestone 4: Trip editor and imports
 

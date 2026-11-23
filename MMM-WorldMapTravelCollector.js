@@ -26,13 +26,14 @@ Module.register("MMM-WorldMapTravelCollector", {
 		maxWidth: "90%",
 		maxHeight: "80%",
 		theme: "digital", // "digital" | "analog"
-		projection: "equalEarth", // "equalEarth" | "naturalEarth" | "mercator"
+		projection: "equalEarth", // map shape: "equalEarth" (curved edges) | "naturalEarth" (less curved) | "equirectangular" (flat rectangle) | "mercator"
 		hideAntarctica: true,
 		animations: true,
 		highlightNewest: true,
 		fadeByAge: false, // places visited long ago are drawn fainter, recent ones in full color
 		fadeStrength: 0.6, // 0 = no fading … 0.95 = the oldest places almost vanish
-		fadeYears: 10, // visits this many years ago (or more) get the full fade
+		fadeUnit: "years", // what fadeAmount counts: "years" | "months" | "days"
+		fadeAmount: 10, // visits this many years/months/days ago (or more) get the full fade
 		showPlanned: true,
 		showLegend: true,
 		showProblems: true,
@@ -42,6 +43,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		defaultFilter: "all",
 		rotateInterval: 30, // seconds between views; 0 = off
 		touchPause: 120, // seconds rotation pauses after a tap or a command
+		details: true, // tap a pin or a country to see its trips
+		detailsTimeout: 20, // seconds before the details card closes by itself; 0 = stays open
 		labels: {},
 
 		// Stats
@@ -171,6 +174,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 	suspend () {
 		this.stopTimers();
+		this.closeDetails();
 	},
 
 	resume () {
@@ -275,6 +279,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.mapEl = el("div", "wmtc-map");
 		this.messageEl = el("div", "wmtc-message");
 		this.mapEl.append(this.messageEl);
+		this.mapEl.addEventListener("click", (e) => this.onMapClick(e));
 		this.statsEl = el("div", "wmtc-stats");
 		this.ledgerEl = el("div", "wmtc-ledger");
 		this.ledgerEl.addEventListener("click", () => this.turnPage());
@@ -462,8 +467,115 @@ Module.register("MMM-WorldMapTravelCollector", {
 		return h;
 	},
 
+	/** A tap on the map: a pin or a country opens its details; anywhere else closes them. */
+	onMapClick (e) {
+		if (!this.config.details) return;
+		const target = e.target && e.target.closest ? e.target : null;
+		if (!target) return;
+		if (target.closest(".wmtc-detail")) {
+			if (target.closest(".wmtc-detail-close")) this.closeDetails();
+			return;
+		}
+		const view = this.currentView();
+		const pinKey = this.pinNear(e) || (target.closest("[data-pin]") ? target.closest("[data-pin]").getAttribute("data-pin") : null);
+		const countryEl = pinKey ? null : target.closest("[data-code]");
+		const pin = pinKey && view ? view.pins.find((p) => p.key === pinKey) : null;
+		const country = countryEl && view ? view.countries[countryEl.getAttribute("data-code")] : null;
+		if (pin) {
+			const visible = [...this.mapEl.querySelectorAll(".wmtc-pin")].find((c) => c.getAttribute("data-pin") === pin.key);
+			this.showDetails("pin", pin.tripIds, e, visible);
+		} else if (country) this.showDetails("country", country.tripIds, e, countryEl);
+		else this.closeDetails();
+	},
+
+	/** The pin closest to a tap, if one is within finger reach. */
+	pinNear (e) {
+		if (!this.pinPoints || !Number.isFinite(e.clientX) || !Number.isFinite(e.clientY) || (e.clientX === 0 && e.clientY === 0)) return null;
+		const box = this.mapEl.getBoundingClientRect();
+		const x = e.clientX - box.left;
+		const y = e.clientY - box.top;
+		let best = null;
+		let bestDist = Infinity;
+		for (const p of this.pinPoints) {
+			const dist = Math.hypot(p.x - x, p.y - y);
+			if (dist <= p.reach && dist < bestDist) {
+				best = p.key;
+				bestDist = dist;
+			}
+		}
+		return best;
+	},
+
+	/** Open the card for a place, next to where it was tapped. */
+	showDetails (kind, tripIds, point, selectedEl) {
+		this.closeDetails();
+		if (!this.model) return;
+		const trips = (tripIds || []).map((id) => this.model.trips[id]).filter((t) => t && (this.config.showPlanned || !t.planned));
+		if (!trips.length) return;
+		const d = WMTCLedger.placeDetails(trips, { kind, dateFormat: this.config.ledger.dateFormat, locale: this.locale });
+
+		const card = el("div", `wmtc-detail wmtc-detail-${kind}`);
+		card.setAttribute("role", "dialog");
+		const close = el("button", "wmtc-detail-close", "×");
+		close.setAttribute("aria-label", "Close");
+		close.type = "button";
+		card.append(close, el("div", "wmtc-detail-title", d.title));
+		if (d.facts.length) {
+			const facts = el("ul", "wmtc-detail-facts");
+			for (const f of d.facts) facts.append(el("li", "", f));
+			card.append(facts);
+		}
+		const visits = el("ul", "wmtc-detail-visits");
+		for (const v of d.visits) {
+			const li = el("li", v.planned ? "wmtc-detail-visit wmtc-detail-planned" : "wmtc-detail-visit");
+			li.append(el("span", "wmtc-detail-when", v.when));
+			if (v.place) li.append(el("span", "wmtc-detail-place", v.place));
+			if (v.detail) li.append(el("span", "wmtc-detail-info", v.detail));
+			if (v.planned) li.append(el("span", "wmtc-detail-tag", "planned"));
+			if (v.note) li.append(el("div", "wmtc-detail-note", v.note));
+			visits.append(li);
+		}
+		card.append(visits);
+		if (d.more) card.append(el("div", "wmtc-detail-more", `+${d.more} more`));
+		this.mapEl.append(card);
+		this.detailEl = card;
+
+		// Place it beside the tap, flipped and kept inside the map when near an edge.
+		const box = this.mapEl.getBoundingClientRect();
+		const size = card.getBoundingClientRect();
+		const x = (point && Number.isFinite(point.clientX) ? point.clientX : box.left + box.width / 2) - box.left;
+		const y = (point && Number.isFinite(point.clientY) ? point.clientY : box.top + box.height / 2) - box.top;
+		const gap = 14;
+		let left = x + gap + size.width > box.width ? x - gap - size.width : x + gap;
+		let top = y - size.height / 2;
+		left = Math.max(4, Math.min(left, box.width - size.width - 4));
+		top = Math.max(4, Math.min(top, box.height - size.height - 4));
+		card.style.left = `${Math.round(left)}px`;
+		card.style.top = `${Math.round(top)}px`;
+
+		if (selectedEl) {
+			selectedEl.classList.add("wmtc-selected");
+			this.selectedEl = selectedEl;
+		}
+		const timeout = Number(this.config.detailsTimeout);
+		this.pausedUntil = Math.max(Date.now() + Math.max(0, Number(this.config.touchPause) || 0) * 1000, timeout > 0 ? Date.now() + timeout * 1000 : Infinity);
+		if (timeout > 0) this.detailTimer = setTimeout(() => this.closeDetails(), timeout * 1000);
+	},
+
+	closeDetails () {
+		clearTimeout(this.detailTimer);
+		this.detailTimer = null;
+		if (this.detailEl) this.detailEl.remove();
+		this.detailEl = null;
+		if (this.selectedEl) this.selectedEl.classList.remove("wmtc-selected");
+		this.selectedEl = null;
+		// A card that stayed open (detailsTimeout: 0) paused rotation indefinitely: count down from now instead.
+		if (this.pausedUntil === Infinity) this.pause();
+	},
+
 	renderMap () {
 		if (!this.mapEl) return;
+		this.closeDetails();
 		const old = this.mapEl.querySelector("svg");
 		if (old) old.remove();
 
@@ -506,8 +618,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const countryLayer = svgEl("g", { class: "wmtc-countries" });
 		const states = view ? view.countries : {};
 		const showPlanned = this.config.showPlanned;
-		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, years: this.config.fadeYears };
-		const month = this.model && this.model.currentMonth;
+		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, unit: this.config.fadeUnit, amount: this.config.fadeAmount };
+		const month = this.model && (this.model.today || this.model.currentMonth);
 		const fadeStyle = (last) => {
 			const f = WMTCLayout.fadeFactor(last, month, fade);
 			return f < 1 ? `;--wmtc-fade:${f}` : "";
@@ -519,6 +631,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const attrs = { d, class: "wmtc-country" };
 			if (state && (state.state === "visited" || showPlanned)) {
 				attrs.class += ` wmtc-${state.state}`;
+				attrs["data-code"] = f.properties.iso2;
 				attrs.style = `--wmtc-color:${WMTCLayout.colorFor(state.group, this.colors)}${state.state === "visited" ? fadeStyle(state.last) : ""}`;
 				if (analog && state.state === "visited") attrs.filter = `url(#${filterId})`;
 			}
@@ -530,6 +643,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 		const pinLayer = svgEl("g", { class: "wmtc-pins" });
 		const haloLayer = svgEl("g", { class: "wmtc-halos" });
+		// Where each pin is drawn, so a tap can pick the nearest one (pins are small and often close together).
+		this.pinPoints = [];
 		for (const pin of view ? view.pins : []) {
 			if (pin.planned && !showPlanned) continue;
 			const xy = projection([pin.lon, pin.lat]);
@@ -541,10 +656,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 				cy: xy[1].toFixed(1),
 				r,
 				class: pin.planned ? "wmtc-pin wmtc-pin-planned" : "wmtc-pin",
+				"data-pin": pin.key,
 				style: `--wmtc-color:${color}${pin.planned ? "" : fadeStyle(pin.last)}`
 			});
 			circle.appendChild(svgEl("title", {}, `${pin.city}${pin.visits > 1 ? ` (${pin.visits} visits)` : ""}`));
 			pinLayer.appendChild(circle);
+			this.pinPoints.push({ key: pin.key, x: xy[0], y: xy[1], reach: Math.max(r + 6, scale.pinRadius * 3, 14) });
 			if (pin.newest && this.config.highlightNewest) {
 				haloLayer.appendChild(svgEl("circle", { cx: xy[0].toFixed(1), cy: xy[1].toFixed(1), r: r * 1.1, class: "wmtc-halo", style: `--wmtc-color:${color}` }));
 			}
@@ -561,6 +678,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 function makeProjection (name) {
 	if (name === "mercator") return d3.geoMercator();
 	if (name === "naturalEarth") return d3.geoNaturalEarth1();
+	if (name === "equirectangular") return d3.geoEquirectangular();
 	return d3.geoEqualEarth();
 }
 

@@ -33,12 +33,22 @@ describe("buildViewModel", () => {
 	test("most recent visit per country and pin, for fading old trips", () => {
 		const all = model.views[0];
 		expect(model.currentMonth).toBe("2026-11");
+		expect(model.today).toBe("2026-11-23");
 		expect(all.countries.PT.last).toBe("2025-03");
 		expect(all.countries.ZA).toMatchObject({ state: "planned", last: null });
 		expect(all.pins.find((p) => p.city === "Lisbon").last).toBe("2025-03");
 		expect(all.pins.find((p) => p.city === "Cape Town").last).toBeNull();
 		// In Alex's solo view, Lisbon was last visited (alone) in 2019.
 		expect(model.views.find((v) => v.id === "solo:Alex").countries.PT.last).toBe("2019-06");
+	});
+
+	test("each pin and country lists its trips, newest first, for the details card", () => {
+		const all = model.views[0];
+		expect(all.countries.PT.tripIds).toEqual(["lis", "lis2"]);
+		expect(all.countries.IS.tripIds.sort()).toEqual(["ice", "rey"]);
+		expect(all.countries.ZA.tripIds).toEqual(["cpt"]);
+		expect(all.pins.find((p) => p.city === "Lisbon").tripIds).toEqual(["lis", "lis2"]);
+		expect(model.views.find((v) => v.id === "solo:Sam").countries.IS.tripIds.sort()).toEqual(["ice", "rey"]);
 	});
 
 	test("default views and labels", () => {
@@ -61,10 +71,10 @@ describe("buildViewModel", () => {
 	test("country shading: visited beats planned, colors by group", () => {
 		const all = model.views[0];
 		expect(all.countries).toEqual({
-			PT: { state: "visited", group: "mixed", last: "2025-03" },
-			IS: { state: "visited", group: "Sam", last: "2023-08" },
-			US: { state: "visited", group: "Alex", last: "2024-06" },
-			ZA: { state: "planned", group: "together", last: null }
+			PT: { state: "visited", group: "mixed", last: "2025-03", tripIds: ["lis", "lis2"] },
+			IS: { state: "visited", group: "Sam", last: "2023-08", tripIds: expect.arrayContaining(["ice", "rey"]) },
+			US: { state: "visited", group: "Alex", last: "2024-06", tripIds: ["chi"] },
+			ZA: { state: "planned", group: "together", last: null, tripIds: ["cpt"] }
 		});
 	});
 

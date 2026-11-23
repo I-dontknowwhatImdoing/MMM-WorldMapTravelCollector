@@ -126,3 +126,55 @@ describe("statParts", () => {
 		expect(L.statParts(stats, ["distance"], "not a locale!!")[0].value).toBe("262800");
 	});
 });
+
+describe("placeDetails", () => {
+	const lisbon = { city: "Lisbon", countryName: "Portugal", travelers: ["Alex", "Sam"] };
+	const trips = [
+		{ ...lisbon, date: "2027-04", days: 4, planned: true },
+		{ ...lisbon, date: "2025-03", days: 5, note: "Anniversary" },
+		{ city: "Porto", countryName: "Portugal", date: "2025-03", days: 3, travelers: ["Alex", "Sam"] },
+		{ ...lisbon, date: "2019-06", travelers: ["Alex"] },
+		{ city: "", countryName: "Portugal", date: "2018-01", travelers: ["Jo"] }
+	];
+
+	test("country: counts, first and latest, next planned trip, who, cities, recent trips", () => {
+		const d = L.placeDetails(trips, { kind: "country" });
+		expect(d.title).toBe("Portugal");
+		expect(d.facts).toEqual([
+			"4 trips · 2 cities · 8 days in total",
+			"First Jan 2018 · Latest Mar 2025",
+			"Next: Apr 2027 (planned)",
+			"With Alex, Sam & Jo",
+			"Cities: Lisbon (2), Porto"
+		]);
+		expect(d.visits[0]).toEqual({ when: "Apr 2027", place: "Lisbon", detail: "4 days · Alex & Sam", note: "", planned: true });
+		expect(d.visits[1].note).toBe("Anniversary");
+		expect(d.visits[4]).toMatchObject({ place: "Around the country", detail: "Jo" });
+		expect(d.more).toBe(0);
+	});
+
+	test("pin: a summary only when there's more than one visit", () => {
+		const lis = trips.filter((t) => t.city === "Lisbon");
+		const d = L.placeDetails(lis, { kind: "pin", dateFormat: "MMMM YYYY" });
+		expect(d.title).toBe("Lisbon, Portugal");
+		expect(d.facts).toEqual(["2 visits · 5 days in total", "First June 2019 · Latest March 2025", "Next: April 2027 (planned)"]);
+		expect(d.visits.map((v) => v.place)).toEqual(["", "", ""]);
+		const one = L.placeDetails([trips[2]], { kind: "pin" });
+		expect(one).toEqual({ title: "Porto, Portugal", facts: [], visits: [{ when: "Mar 2025", place: "", detail: "3 days · Alex & Sam", note: "", planned: false }], more: 0 });
+	});
+
+	test("one visit, only planned trips, long lists and odd input", () => {
+		expect(L.placeDetails([trips[2]], { kind: "country" }).facts).toEqual(["1 trip · 1 city · 3 days in total", "Visited Mar 2025", "With Alex & Sam"]);
+		expect(L.placeDetails([trips[0]], { kind: "country" }).facts).toEqual(["Next: Apr 2027 (planned)", "With Alex & Sam"]);
+		const many = Array.from({ length: 12 }, (_, i) => ({ city: `Town${i}`, countryName: "Italy", date: `2020-${String(i + 1).padStart(2, "0")}`, travelers: [] }));
+		const d = L.placeDetails(many, { kind: "country", maxVisits: 3 });
+		expect(d.visits).toHaveLength(3);
+		expect(d.more).toBe(9);
+		expect(d.facts.at(-1)).toMatch(/\+4 more$/);
+		expect(d.visits[0].detail).toBe("");
+		expect(L.placeDetails([], {})).toEqual({ title: "", facts: [], visits: [], more: 0 });
+		expect(L.placeDetails([{ city: "", countryName: "Iceland", date: "2023-08", travelers: ["Sam"] }]).title).toBe("Iceland");
+		expect(L.joinNames([])).toBe("");
+		expect(L.joinNames(["A"])).toBe("A");
+	});
+});
