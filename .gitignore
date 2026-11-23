@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+.DS_Store
+*.log
+
+# Your own travel data never leaves your mirror
+data/trips.json
+data/trips.csv
+data/geocache.json
+data/backups/
