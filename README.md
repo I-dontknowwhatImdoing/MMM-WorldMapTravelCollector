@@ -225,7 +225,7 @@ The list of places under the map. Set only what you want to change, e.g. `ledger
 | `enabled` | `true` | Show the ledger |
 | `rows` | `"auto"` | Rows per page. `"auto"` is 5, or more on a tall (portrait) screen when there are trips to fill the space under the map |
 | `columns` | `4` | Columns per page. On a portrait mirror, `2` or `3` leaves room for longer names |
-| `sort` | `"newest"` | `"newest"`, `"oldest"` or `"alpha"` |
+| `sort` | `"newest"` | The order of the ledger, read down each column and then across: `"newest"` (the most recent trip first), `"oldest"` (your first trip first) or `"alpha"` (A to Z by city, or by country for country-only trips; repeat visits to the same place, newest first). Trips in the same month go A to Z |
 | `overflow` | `"cycle"` | When trips don't fit: `"cycle"` turns pages, `"shrink"` makes the text smaller |
 | `pageInterval` | `15` | Seconds per page, for `"cycle"` |
 | `minFontSize` | `10` | Smallest text in pixels, for `"shrink"`. Anything that still doesn't fit becomes "+N more" |

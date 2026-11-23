@@ -70,7 +70,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			enabled: true,
 			rows: "auto", // a number, or "auto": 5, and more on tall screens when there are trips to fill them
 			columns: 4,
-			sort: "newest", // "newest" | "oldest" | "alpha"
+			sort: "newest", // "newest" (most recent first) | "oldest" (first trip first) | "alpha" (A–Z by city)
 			overflow: "cycle", // "cycle" | "shrink"
 			pageInterval: 15, // seconds, for "cycle"
 			minFontSize: 10, // px, for "shrink"
