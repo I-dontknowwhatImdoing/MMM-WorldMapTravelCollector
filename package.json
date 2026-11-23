@@ -1,0 +1,54 @@
+{
+  "name": "mmm-worldmaptravelcollector",
+  "version": "0.1.0",
+  "description": "MagicMirror² module that maps everywhere you've traveled, solo or together, with a notebook-style ledger of places and dates, travel stats, and a phone-friendly editor.",
+  "main": "MMM-WorldMapTravelCollector.js",
+  "author": "I-dontknowwhatImdoing",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/I-dontknowwhatImdoing/MMM-WorldMapTravelCollector.git"
+  },
+  "keywords": [
+    "MagicMirror",
+    "MagicMirror2",
+    "module",
+    "travel",
+    "world map",
+    "places visited"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "build:geo": "node scripts/build-geo.js",
+    "import": "node scripts/import.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "lib/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 90,
+        "branches": 80,
+        "functions": 90,
+        "statements": 90
+      }
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "all-the-cities": "^3.1.0",
+    "countries-list": "^3.4.1",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "i18n-iso-countries": "^7.14.0",
+    "jest": "^30.5.2",
+    "world-atlas": "^2.0.2"
+  }
+}
