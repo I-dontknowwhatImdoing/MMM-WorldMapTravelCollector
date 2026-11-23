@@ -30,7 +30,7 @@ Later (v2+): timeline view (Jan–Dec × years), zoom/focus on a region or city,
 - Google Sheet: `lib/sheet.js`, cached in `data/sheet-cache.csv`; read-only in the editor.
 - Details card (`details`, `detailsTimeout`): view model gives each pin and country `tripIds` (newest first); `WMTCLedger.placeDetails` builds the card text; the front end picks the nearest pin to a tap from `this.pinPoints` (pins overlap at world scale), else the tapped country path (`data-code`).
 - Projections: `equalEarth` (default), `naturalEarth`, `equirectangular`, `mercator` (`makeProjection` in the front end).
-- Fade by age (`fadeByAge`, `fadeStrength`, `fadeYears`; off by default): the view model gives each country and pin `last` (most recent visited month in that view) and the model `currentMonth`; `WMTCLayout.fadeFactor` turns that into `--wmtc-fade`, which scales fill/stroke opacity in CSS. Planned trips never fade.
+- Fade by age (`fadeByAge`, `fadeStrength`, `fadeUnit` years/months/days, `fadeAmount`; off by default): the view model gives each country and pin `last` (most recent visited month in that view) and the model `currentMonth` and `today`; `WMTCLayout.fadeFactor` turns that into `--wmtc-fade` (for days, a trip counts as the 15th of its month), which scales fill/stroke opacity in CSS. Planned trips never fade.
 
 ## Working in this repo
 

@@ -33,6 +33,7 @@ describe("buildViewModel", () => {
 	test("most recent visit per country and pin, for fading old trips", () => {
 		const all = model.views[0];
 		expect(model.currentMonth).toBe("2026-11");
+		expect(model.today).toBe("2026-11-23");
 		expect(all.countries.PT.last).toBe("2025-03");
 		expect(all.countries.ZA).toMatchObject({ state: "planned", last: null });
 		expect(all.pins.find((p) => p.city === "Lisbon").last).toBe("2025-03");

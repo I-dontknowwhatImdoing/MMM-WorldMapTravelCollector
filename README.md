@@ -63,7 +63,8 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `highlightNewest` | `true` | Gently pulse the most recent trip |
 | `fadeByAge` | `false` | Draw places you visited long ago fainter, and recent ones in full color |
 | `fadeStrength` | `0.6` | How much the oldest places fade: `0` is no fading, `0.95` almost hides them |
-| `fadeYears` | `10` | How many years it takes to reach the full fade. Places visited this long ago or longer all look the same |
+| `fadeUnit` | `"years"` | What `fadeAmount` counts: `"years"`, `"months"` or `"days"` |
+| `fadeAmount` | `10` | How many years, months or days it takes to reach the full fade. Places visited this long ago or longer all look the same. Trips are stored by month, so with `"days"` a trip counts as the 15th of its month |
 | `animations` | `true` | Turn off all motion |
 | `showProblems` | `true` | Show a note when rows in your trips file were skipped |
 | `dataDir` | module's `data/` | Folder holding `trips.json` / `trips.csv` |

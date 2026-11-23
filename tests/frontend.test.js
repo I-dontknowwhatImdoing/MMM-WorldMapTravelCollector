@@ -118,7 +118,7 @@ describe("map", () => {
 		data(m);
 		expect($$(".wmtc-visited, .wmtc-pin").some((p) => p.getAttribute("style").includes("--wmtc-fade"))).toBe(false);
 
-		const faded = await mount({ fadeByAge: true, fadeStrength: 0.6, fadeYears: 10 });
+		const faded = await mount({ fadeByAge: true, fadeStrength: 0.6, fadeUnit: "years", fadeAmount: 10 });
 		data(faded);
 		const fadeOf = (el) => el.style.getPropertyValue("--wmtc-fade");
 		const country = (name) => $$(".wmtc-country").find((p) => p.querySelector("title").textContent === name);
@@ -131,6 +131,17 @@ describe("map", () => {
 		// Planned trips are never faded.
 		expect(fadeOf(country("South Africa"))).toBe("");
 		expect(fadeOf(pin("Cape Town"))).toBe("");
+
+		// Months: 20 of 24 months for Lisbon; anything 24+ months old is fully faded.
+		const months = await mount({ fadeByAge: true, fadeStrength: 0.6, fadeUnit: "months", fadeAmount: 24 });
+		data(months);
+		expect(fadeOf(country("Portugal"))).toBe("0.5");
+		expect(fadeOf(country("Iceland"))).toBe("0.4");
+
+		// Days: a 90-day fade leaves only very recent trips bright; all of these are older.
+		const days = await mount({ fadeByAge: true, fadeStrength: 0.6, fadeUnit: "days", fadeAmount: 90 });
+		data(days);
+		expect(fadeOf(country("Portugal"))).toBe("0.4");
 	});
 
 	test("Antarctica is hidden by default and can be shown", async () => {

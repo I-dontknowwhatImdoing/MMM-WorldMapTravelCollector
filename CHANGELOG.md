@@ -11,7 +11,7 @@
 
 ### Map: fade older trips
 
-- New `fadeByAge` option: countries and pins you visited long ago are drawn fainter, and recent ones in full color. `fadeStrength` sets how much (0 to 0.95) and `fadeYears` how quickly. Off by default; planned trips never fade.
+- New `fadeByAge` option: countries and pins you visited long ago are drawn fainter, and recent ones in full color. `fadeStrength` sets how much (0 to 0.95). `fadeUnit` (`"years"`, `"months"` or `"days"`) and `fadeAmount` set how quickly, e.g. `fadeUnit: "months", fadeAmount: 18`. Off by default; planned trips never fade.
 
 ### Milestone 4: Trip editor and imports
 

@@ -81,24 +81,48 @@ describe("palette and colors", () => {
 });
 
 describe("fadeFactor", () => {
-	const on = { enabled: true, strength: 0.6, years: 10 };
-	test("full color this month and for planned trips; off means no fading", () => {
-		expect(L.fadeFactor("2026-11", "2026-11", on)).toBe(1);
-		expect(L.fadeFactor("2027-04", "2026-11", on)).toBe(1);
-		expect(L.fadeFactor("2006-01", "2026-11", { ...on, enabled: false })).toBe(1);
-		expect(L.fadeFactor("2006-01", "2026-11", null)).toBe(1);
-		expect(L.fadeFactor(null, "2026-11", on)).toBe(1);
+	const on = { enabled: true, strength: 0.6, unit: "years", amount: 10 };
+	test("full color just visited and for planned trips; off means no fading", () => {
+		expect(L.fadeFactor("2026-11", "2026-11-23", on)).toBe(1);
+		expect(L.fadeFactor("2027-04", "2026-11-23", on)).toBe(1);
+		expect(L.fadeFactor("2006-01", "2026-11-23", { ...on, enabled: false })).toBe(1);
+		expect(L.fadeFactor("2006-01", "2026-11-23", null)).toBe(1);
+		expect(L.fadeFactor(null, "2026-11-23", on)).toBe(1);
 	});
-	test("fades in a straight line, down to 1 - strength after fadeYears", () => {
-		expect(L.fadeFactor("2021-11", "2026-11", on)).toBe(0.7);
-		expect(L.fadeFactor("2016-11", "2026-11", on)).toBe(0.4);
-		expect(L.fadeFactor("1990-01", "2026-11", on)).toBe(0.4);
-		expect(L.fadeFactor("2025-11", "2026-11", { enabled: true, strength: 1, years: 1 })).toBe(0.05);
-		expect(L.fadeFactor("2021-11", "2026-11", { enabled: true, strength: -1 })).toBe(1);
+
+	test("years: a straight line down to 1 - strength after `amount` years", () => {
+		expect(L.fadeFactor("2021-11", "2026-11-23", on)).toBe(0.7);
+		expect(L.fadeFactor("2016-11", "2026-11-23", on)).toBe(0.4);
+		expect(L.fadeFactor("1990-01", "2026-11-23", on)).toBe(0.4);
+		expect(L.fadeFactor("2021-11", "2026-11", on)).toBe(0.7); // a month alone works too
+		expect(L.fadeFactor("2025-11", "2026-11-23", { enabled: true, strength: 1, amount: 1 })).toBe(0.05);
+		expect(L.fadeFactor("2021-11", "2026-11-23", { enabled: true, strength: -1 })).toBe(1);
 	});
+
+	test("months", () => {
+		const months = { ...on, unit: "months", amount: 24 };
+		expect(L.fadeFactor("2025-11", "2026-11-23", months)).toBe(0.7);
+		expect(L.fadeFactor("2026-10", "2026-11-23", months)).toBe(0.975);
+		expect(L.fadeFactor("2020-01", "2026-11-23", months)).toBe(0.4);
+	});
+
+	test("days, counting a trip as the 15th of its month", () => {
+		const days = { ...on, unit: "days", amount: 90 };
+		expect(L.fadeAge("2026-10", "2026-11-23", "days")).toBe(39);
+		expect(L.fadeFactor("2026-10", "2026-11-23", days)).toBe(0.74);
+		expect(L.fadeFactor("2026-11", "2026-11-10", days)).toBe(1); // before the 15th: not yet "past"
+		expect(L.fadeFactor("2026-11", "2026-11-30", days)).toBe(0.9);
+		expect(L.fadeFactor("2026-01", "2026-11-23", days)).toBe(0.4);
+		expect(L.fadeAge("2026-10", "2026-11", "days")).toBe(31);
+		expect(L.fadeAge("soon", "2026-11-23", "days")).toBeNaN();
+		expect(L.fadeAge("2026-10", "", "days")).toBeNaN();
+	});
+
 	test("missing or odd settings use the defaults (0.6 over 10 years)", () => {
-		expect(L.fadeFactor("2016-11", "2026-11", { enabled: true })).toBe(0.4);
-		expect(L.fadeFactor("2016-11", "2026-11", { enabled: true, strength: "lots", years: 0 })).toBe(0.4);
+		expect(L.fadeFactor("2016-11", "2026-11-23", { enabled: true })).toBe(0.4);
+		expect(L.fadeFactor("2016-11", "2026-11-23", { enabled: true, strength: "lots", unit: "weeks", amount: 0 })).toBe(0.4);
+		expect(L.fadeFactor("2016-11", "2026-11-23", { enabled: true, unit: "months", amount: "x" })).toBe(0.4);
+		expect(L.FADE_UNITS).toEqual(["years", "months", "days"]);
 		expect(L.monthIndex("2026-01")).toBe(2026 * 12);
 		expect(L.monthIndex("soon")).toBeNaN();
 	});

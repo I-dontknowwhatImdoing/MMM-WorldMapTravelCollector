@@ -32,7 +32,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		highlightNewest: true,
 		fadeByAge: false, // places visited long ago are drawn fainter, recent ones in full color
 		fadeStrength: 0.6, // 0 = no fading … 0.95 = the oldest places almost vanish
-		fadeYears: 10, // visits this many years ago (or more) get the full fade
+		fadeUnit: "years", // what fadeAmount counts: "years" | "months" | "days"
+		fadeAmount: 10, // visits this many years/months/days ago (or more) get the full fade
 		showPlanned: true,
 		showLegend: true,
 		showProblems: true,
@@ -617,8 +618,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const countryLayer = svgEl("g", { class: "wmtc-countries" });
 		const states = view ? view.countries : {};
 		const showPlanned = this.config.showPlanned;
-		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, years: this.config.fadeYears };
-		const month = this.model && this.model.currentMonth;
+		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, unit: this.config.fadeUnit, amount: this.config.fadeAmount };
+		const month = this.model && (this.model.today || this.model.currentMonth);
 		const fadeStyle = (last) => {
 			const f = WMTCLayout.fadeFactor(last, month, fade);
 			return f < 1 ? `;--wmtc-fade:${f}` : "";
