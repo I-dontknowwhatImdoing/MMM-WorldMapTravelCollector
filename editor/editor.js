@@ -28,7 +28,7 @@
 			else if (k in el && typeof v !== "string") el[k] = v;
 			else el.setAttribute(k, v === true ? "" : v);
 		}
-		for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+		for (const c of children.flat(Infinity)) if (c !== null && c !== undefined && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
 		return el;
 	}
 
@@ -202,8 +202,10 @@
 	function renderTrips () {
 		const out = [];
 		const d = S.data;
-		const q = S.search.trim().toLowerCase();
-		const matches = (t) => !q || [t.city, countryName(t.country), t.country, t.note, t.date, formatMonth(t.date), ...t.travelers].join(" ").toLowerCase().includes(q);
+		const matches = (t) => {
+			const q = S.search.trim().toLowerCase();
+			return !q || [t.city, countryName(t.country), t.country, t.note, t.date, formatMonth(t.date), whenText(t), ...t.travelers].join(" ").toLowerCase().includes(q);
+		};
 
 		if (d.broken.length) {
 			out.push(h("div", { class: "notice" },
@@ -222,6 +224,10 @@
 			S.search = search.value;
 			const list = main.querySelector(".trip-groups");
 			if (list) list.replaceChildren(...tripGroups(d.trips.filter(matches), false));
+			main.querySelectorAll("[data-source]").forEach((el) => {
+				const src = d.readOnly.find((s) => s.source === el.dataset.source);
+				if (src) el.replaceChildren(...tripGroups(src.trips.filter(matches), true));
+			});
 		});
 		out.push(h("div", { class: "field" }, search));
 
@@ -239,7 +245,7 @@
 			if (!src.trips.length) continue;
 			out.push(h("h3", { text: `From ${src.source}` }));
 			out.push(h("p", { class: "muted small", text: src.source === "Google Sheet" ? "These come from your Google Sheet. Change them there; the mirror picks it up on its next check." : `These come from ${src.source}. Change them in that file.` }));
-			out.push(h("div", {}, tripGroups(src.trips.filter(matches), true)));
+			out.push(h("div", { "data-source": src.source }, tripGroups(src.trips.filter(matches), true)));
 		}
 		main.replaceChildren(...out);
 	}
@@ -278,7 +284,8 @@
 	}
 
 	function editTrip (trip, broken) {
-		S.editing = broken ? { id: broken.id, broken: true, errors: broken.errors, ...broken.raw } : trip;
+		// The raw row may carry its own id; the editor must address it by its position id (row-N).
+		S.editing = broken ? { ...broken.raw, id: broken.id, broken: true, errors: broken.errors } : trip;
 		S.formDraft = null;
 		setTab("add");
 	}
@@ -393,9 +400,12 @@
 			v.city = city.value;
 			keep();
 		});
+		// Set once the coordinate boxes exist (below): a new place drops the old place's coordinates.
+		let clearSpot = () => {};
 		const suggest = cityField(city, () => country.value, (c) => {
 			city.value = v.city = c.name;
 			country.value = v.country = c.countryName;
+			clearSpot();
 			keep();
 		});
 		const day = dayPicker(v.start, "When");
@@ -428,6 +438,14 @@
 			v.lon = lon.value;
 			keep();
 		});
+		clearSpot = () => {
+			if (!v.lat && !v.lon) return;
+			v.lat = v.lon = "";
+			lat.value = lon.value = "";
+			keep();
+		};
+		city.addEventListener("input", () => clearSpot());
+		country.addEventListener("input", () => clearSpot());
 
 		const editing = S.editing;
 		const save = h("button", { class: "btn primary grow", type: "submit", text: editing ? "Save changes" : "Add trip" });

@@ -245,6 +245,22 @@ describe("map", () => {
 	});
 });
 
+describe("hidden module", () => {
+	test("B8: new data while hidden doesn't restart rotation; showing it again does", async () => {
+		const m = await mount({ rotateInterval: 30 });
+		data(m);
+		expect(Object.keys(m.timers)).toContain("rotate");
+		m.hidden = true;
+		m.suspend();
+		expect(Object.keys(m.timers)).toEqual([]);
+		data(m);
+		expect(Object.keys(m.timers)).toEqual([]);
+		m.hidden = false;
+		m.resume();
+		expect(Object.keys(m.timers)).toContain("rotate");
+	});
+});
+
 describe("color by year or month", () => {
 	const colorOf = (sel) => document.querySelector(sel).style.getPropertyValue("--wmtc-color");
 	const pt = ".wmtc-country[data-code='PT']";

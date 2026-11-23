@@ -30,7 +30,7 @@ export default [
 		languageOptions: { globals: { ...globals.node, ...globals.jest } }
 	},
 	{
-		files: ["tests/frontend.test.js"],
+		files: ["tests/frontend.test.js", "tests/editor-page.test.js"],
 		languageOptions: { globals: { ...globals.browser, ...globals.node, ...globals.jest, Log: "readonly" } }
 	},
 	{
