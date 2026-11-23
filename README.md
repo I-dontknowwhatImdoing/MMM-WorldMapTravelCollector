@@ -2,9 +2,11 @@
 
 A [MagicMirror²](https://magicmirror.builders/) module that maps everywhere you've traveled, solo or together, with a notebook-style ledger of places and dates, travel stats, and a trip editor you use from your phone.
 
-| Digital (for mirrors) | Analog (for TVs and frames) |
-| --- | --- |
-| ![Digital theme](screenshots/digital-all.png) | ![Analog theme](screenshots/analog-all.png) |
+![The map on a mirror: pins for every place, tabs for people, years and months, stats, and a list of places and dates](screenshots/screenshot.png)
+
+| Analog (for TVs and frames) | Colored by year | Tap a place for its trips |
+| --- | --- | --- |
+| ![Analog theme](screenshots/analog.jpg) | ![The Years tab](screenshots/years.png) | ![Details card for Japan](screenshots/details.png) |
 
 - Each place you've visited gets a pin, and planned trips show as hollow pins. Visited countries can be shaded too (`shadeCountries`).
 - Views for trips taken together, by each person, by year or by month, which take turns on the mirror.
