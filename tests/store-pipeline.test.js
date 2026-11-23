@@ -142,7 +142,7 @@ describe("import command", () => {
 		const { out, log } = lines();
 		const target = path.join(dir, "trips.json");
 		expect(run([EXAMPLE_CSV, "--travelers", "Alex,Sam", "--out", target], log)).toBe(0);
-		expect(out.pop()).toMatch(/^Added 11 trips, merged 0 duplicates, skipped 0\. 11 trips in /);
+		expect(out.pop()).toMatch(/^Added 22 trips, merged 0 duplicates, skipped 0\. 22 trips in /);
 		const trips = readTripsFile(target);
 		expect(trips.every((t) => t.city === "" || (Number.isFinite(t.lat) && Number.isFinite(t.lon)))).toBe(true);
 		expect(trips.find((t) => t.note === "Paris, Texas")).toMatchObject({ country: "US", lat: 33.6609 });
@@ -152,7 +152,7 @@ describe("import command", () => {
 		const target = path.join(dir, "trips.json");
 		let l = lines();
 		expect(run([EXAMPLE_CSV, "--travelers", "Alex,Sam", "--out", target, "--dry-run"], l.log)).toBe(0);
-		expect(l.out.pop()).toContain("Would add 11 trips");
+		expect(l.out.pop()).toContain("Would add 22 trips");
 		expect(fs.existsSync(target)).toBe(false);
 		l = lines();
 		expect(run(["--help"], l.log)).toBe(0);

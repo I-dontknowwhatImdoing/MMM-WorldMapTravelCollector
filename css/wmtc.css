@@ -1,23 +1,61 @@
 /* MMM-WorldMapTravelCollector
  * Every color and size is a CSS variable, so you can restyle it from MagicMirror's custom.css:
  *   .wmtc { --wmtc-land: rgba(255,255,255,0.08); }
+ *   .wmtc-theme-analog { --wmtc-paper: #f4ead6; }
  */
+
+@font-face {
+	font-family: "WMTC Hand";
+	src: url("../fonts/patrick-hand-latin-400-normal.woff2") format("woff2");
+	font-weight: 400;
+	font-display: swap;
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: "WMTC Hand";
+	src: url("../fonts/patrick-hand-latin-ext-400-normal.woff2") format("woff2");
+	font-weight: 400;
+	font-display: swap;
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+	font-family: "WMTC Fell";
+	src: url("../fonts/im-fell-english-latin-400-normal.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "WMTC Fell";
+	src: url("../fonts/im-fell-english-latin-400-italic.woff2") format("woff2");
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* ---------- Digital theme (default): light lines on black, made for mirrors ---------- */
 
 .wmtc {
 	--wmtc-font: 16px;
 	--wmtc-line: 0.6px;
-	--wmtc-text: rgba(255, 255, 255, 0.9);
+	--wmtc-text: rgba(255, 255, 255, 0.92);
 	--wmtc-muted: rgba(255, 255, 255, 0.5);
+	--wmtc-faint: rgba(255, 255, 255, 0.14);
 	--wmtc-land: rgba(255, 255, 255, 0.055);
 	--wmtc-border: rgba(255, 255, 255, 0.26);
 	--wmtc-visited-opacity: 0.42;
 	--wmtc-pin-outline: #000;
+	--wmtc-ledger-family: inherit;
+	--wmtc-title-family: inherit;
 
 	position: relative;
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
-	gap: calc(var(--wmtc-font) * 0.5);
+	gap: calc(var(--wmtc-font) * 0.6);
 	font-size: var(--wmtc-font);
 	line-height: 1.2;
 	color: var(--wmtc-text);
@@ -41,28 +79,49 @@
 	margin: 0 auto;
 }
 
-/* Header: view name on the left, legend on the right */
+/* Header: view chips (which double as the color key) and the planned key */
 .wmtc-header {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: baseline;
+	align-items: center;
 	justify-content: space-between;
 	gap: calc(var(--wmtc-font) * 0.4) calc(var(--wmtc-font) * 1.5);
-	min-height: calc(var(--wmtc-font) * 1.3);
+	min-height: calc(var(--wmtc-font) * 1.6);
+	font-family: var(--wmtc-title-family);
 }
 
-.wmtc-title {
-	font-size: 0.85em;
-	letter-spacing: 0.18em;
-	text-transform: uppercase;
-	color: var(--wmtc-muted);
-}
-
+.wmtc-chips,
 .wmtc-legend {
 	display: flex;
 	flex-wrap: wrap;
-	gap: calc(var(--wmtc-font) * 0.3) calc(var(--wmtc-font) * 1.1);
-	font-size: 0.8em;
+	align-items: center;
+	gap: calc(var(--wmtc-font) * 0.35) calc(var(--wmtc-font) * 0.5);
+}
+
+.wmtc-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	padding: 0.3em 0.8em;
+	border: 1px solid var(--wmtc-faint);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wmtc-muted);
+	font: inherit;
+	font-size: 0.78em;
+	letter-spacing: 0.06em;
+	cursor: pointer;
+	transition: color 0.4s, border-color 0.4s, background-color 0.4s;
+}
+
+.wmtc-chip-active {
+	color: var(--wmtc-text);
+	border-color: var(--wmtc-muted);
+	background: rgba(255, 255, 255, 0.07);
+}
+
+.wmtc-legend {
+	font-size: 0.78em;
 	color: var(--wmtc-muted);
 }
 
@@ -75,6 +134,7 @@
 
 .wmtc-dot {
 	display: inline-block;
+	flex: none;
 	width: 0.7em;
 	height: 0.7em;
 	border-radius: 50%;
@@ -88,10 +148,18 @@
 	border: max(1.5px, calc(var(--wmtc-font) * 0.09)) dashed var(--wmtc-muted);
 }
 
-/* Map */
+/* Body: map, stats, ledger */
+.wmtc-body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: calc(var(--wmtc-font) * 0.7);
+	min-height: 0;
+}
+
 .wmtc-map {
 	position: relative;
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	min-height: 0;
 }
 
@@ -110,6 +178,12 @@
 	font-size: 0.85em;
 	color: var(--wmtc-muted);
 	pointer-events: none;
+}
+
+.wmtc-graticule {
+	fill: none;
+	stroke: var(--wmtc-faint);
+	stroke-width: var(--wmtc-line);
 }
 
 .wmtc-country {
@@ -171,10 +245,108 @@
 	}
 }
 
-.wmtc-no-motion .wmtc-halo {
-	animation: none;
-	transform: scale(1.8);
-	opacity: 0.6;
+/* Stats line */
+.wmtc-stats {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.2em 1.6em;
+	font-size: 0.82em;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-stat-value {
+	color: var(--wmtc-text);
+	font-weight: 600;
+}
+
+/* Ledger: a ruled grid of places, filled column by column */
+.wmtc-ledger {
+	position: relative;
+	flex: none;
+	height: var(--wmtc-ledger-height, auto);
+	font-family: var(--wmtc-ledger-family);
+	font-size: var(--wmtc-ledger-font, 0.78em);
+	cursor: pointer;
+}
+
+.wmtc-ledger-grid {
+	display: grid;
+	grid-auto-flow: column;
+	column-gap: 2.2em;
+	height: 100%;
+}
+
+.wmtc-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	min-width: 0;
+	border-bottom: 1px solid var(--wmtc-faint);
+	white-space: nowrap;
+}
+
+.wmtc-marker {
+	display: inline-flex;
+	flex: none;
+	gap: 0.2em;
+	/* Same width on every row, so place names line up */
+	min-width: calc(var(--wmtc-marker-slots, 1) * 0.75em - 0.2em);
+}
+
+.wmtc-marker .wmtc-dot {
+	width: 0.55em;
+	height: 0.55em;
+	box-shadow: none;
+}
+
+.wmtc-initial {
+	color: var(--wmtc-color);
+	font-weight: 700;
+	font-size: 0.85em;
+}
+
+.wmtc-place {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.wmtc-cell-tinted .wmtc-place {
+	color: var(--wmtc-cell-color);
+}
+
+.wmtc-days,
+.wmtc-date {
+	flex: none;
+	color: var(--wmtc-muted);
+	font-size: 0.85em;
+	font-variant-numeric: tabular-nums;
+}
+
+.wmtc-cell-planned .wmtc-place {
+	font-style: italic;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-cell-newest .wmtc-place {
+	color: var(--wmtc-text);
+	text-shadow: 0 0 0.6em rgba(255, 255, 255, 0.45);
+}
+
+.wmtc-cell-more {
+	justify-content: center;
+	color: var(--wmtc-muted);
+	font-style: italic;
+}
+
+.wmtc-page {
+	position: absolute;
+	right: 0;
+	bottom: -1.5em;
+	font-size: 0.7em;
+	color: var(--wmtc-muted);
 }
 
 .wmtc-footer {
@@ -184,6 +356,136 @@
 	text-align: right;
 }
 
-.wmtc-footer:empty {
+.wmtc-footer:empty,
+.wmtc [hidden] {
 	display: none;
+}
+
+/* View changes and page turns fade in */
+.wmtc-fade-in {
+	animation: wmtc-fade 0.7s ease-out;
+}
+
+@keyframes wmtc-fade {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+.wmtc-no-motion .wmtc-halo {
+	animation: none;
+	transform: scale(1.8);
+	opacity: 0.6;
+}
+
+.wmtc-no-motion .wmtc-fade-in {
+	animation: none;
+}
+
+/* ---------- Analog theme: paper and ink, for TVs and framed screens ---------- */
+
+.wmtc-theme-analog {
+	--wmtc-paper: #efe3c8;
+	--wmtc-ink: #3d2f1f;
+	--wmtc-text: var(--wmtc-ink);
+	--wmtc-muted: rgba(61, 47, 31, 0.62);
+	--wmtc-faint: rgba(61, 47, 31, 0.2);
+	--wmtc-land: rgba(150, 112, 62, 0.12);
+	--wmtc-border: rgba(61, 47, 31, 0.55);
+	--wmtc-visited-opacity: 0.62;
+	--wmtc-pin-outline: var(--wmtc-ink);
+	--wmtc-ledger-family: "WMTC Hand", "Comic Neue", "Segoe Print", cursive;
+	--wmtc-title-family: "WMTC Fell", Georgia, "Times New Roman", serif;
+
+	background-color: var(--wmtc-paper);
+	background-image:
+		radial-gradient(ellipse at 50% 45%, rgba(255, 250, 235, 0.35) 0%, rgba(255, 250, 235, 0) 55%, rgba(110, 78, 40, 0.28) 100%),
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.18 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	font-family: var(--wmtc-title-family);
+}
+
+.wmtc-theme-analog.wmtc-layout-centered {
+	padding: calc(var(--wmtc-font) * 1.2);
+	border-radius: 4px;
+	box-shadow: 0 0.6em 2.4em rgba(0, 0, 0, 0.55);
+}
+
+.wmtc-theme-analog .wmtc-chip {
+	border-color: transparent;
+	border-radius: 0;
+	padding: 0.15em 0.2em;
+	font-size: 0.9em;
+	font-style: italic;
+	letter-spacing: 0.02em;
+}
+
+.wmtc-theme-analog .wmtc-chip-active {
+	background: transparent;
+	border-color: transparent;
+	border-bottom-color: var(--wmtc-ink);
+	color: var(--wmtc-ink);
+}
+
+.wmtc-theme-analog .wmtc-dot {
+	box-shadow: none;
+	border: 1px solid var(--wmtc-ink);
+}
+
+.wmtc-theme-analog .wmtc-dot-planned {
+	border: max(1.5px, calc(var(--wmtc-font) * 0.09)) dashed var(--wmtc-muted);
+}
+
+.wmtc-theme-analog .wmtc-country.wmtc-visited {
+	mix-blend-mode: multiply;
+	stroke: var(--wmtc-border);
+	stroke-opacity: 1;
+}
+
+.wmtc-theme-analog .wmtc-country.wmtc-planned {
+	stroke: var(--wmtc-ink);
+	stroke-opacity: 0.8;
+}
+
+.wmtc-theme-analog .wmtc-pin {
+	filter: none;
+	stroke-width: calc(var(--wmtc-line) * 1.6);
+}
+
+.wmtc-theme-analog .wmtc-pin-planned {
+	fill: var(--wmtc-paper);
+	stroke: var(--wmtc-ink);
+}
+
+.wmtc-theme-analog .wmtc-halo {
+	stroke: var(--wmtc-ink);
+}
+
+.wmtc-theme-analog .wmtc-stats {
+	font-style: italic;
+}
+
+.wmtc-theme-analog .wmtc-stat-value {
+	font-style: normal;
+	font-weight: 400;
+}
+
+/* Notebook paper: ruled lines and a red margin */
+.wmtc-theme-analog .wmtc-ledger {
+	padding-left: 1.4em;
+	border-left: 2px solid rgba(178, 58, 46, 0.45);
+}
+
+.wmtc-theme-analog .wmtc-cell {
+	border-bottom: 1px solid rgba(64, 96, 140, 0.32);
+}
+
+.wmtc-theme-analog .wmtc-cell-newest .wmtc-place {
+	text-shadow: none;
+	text-decoration: underline;
+	text-decoration-color: rgba(178, 58, 46, 0.6);
+	text-underline-offset: 0.2em;
 }
