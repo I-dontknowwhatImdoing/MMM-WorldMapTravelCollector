@@ -113,6 +113,26 @@ describe("map", () => {
 		expect(document.querySelector(".wmtc-map").style.height).toMatch(/px$/);
 	});
 
+	test("fadeByAge draws older places fainter; off by default", async () => {
+		const m = await mount();
+		data(m);
+		expect($$(".wmtc-visited, .wmtc-pin").some((p) => p.getAttribute("style").includes("--wmtc-fade"))).toBe(false);
+
+		const faded = await mount({ fadeByAge: true, fadeStrength: 0.6, fadeYears: 10 });
+		data(faded);
+		const fadeOf = (el) => el.style.getPropertyValue("--wmtc-fade");
+		const country = (name) => $$(".wmtc-country").find((p) => p.querySelector("title").textContent === name);
+		const pin = (city) => $$(".wmtc-pin").find((p) => p.querySelector("title").textContent === city);
+		// Today is Nov 2026: Lisbon Mar 2025 (20 months), Chicago Jun 2024 (29), Reykjavík Aug 2023 (39).
+		expect(fadeOf(country("Portugal"))).toBe("0.9");
+		expect(fadeOf(country("United States of America"))).toBe("0.855");
+		expect(fadeOf(country("Iceland"))).toBe("0.805");
+		expect(fadeOf(pin("Reykjavík"))).toBe("0.805");
+		// Planned trips are never faded.
+		expect(fadeOf(country("South Africa"))).toBe("");
+		expect(fadeOf(pin("Cape Town"))).toBe("");
+	});
+
 	test("Antarctica is hidden by default and can be shown", async () => {
 		await mount();
 		expect($$(".wmtc-country title").some((t) => t.textContent === "Antarctica")).toBe(false);

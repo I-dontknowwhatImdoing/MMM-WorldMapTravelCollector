@@ -30,6 +30,9 @@ Module.register("MMM-WorldMapTravelCollector", {
 		hideAntarctica: true,
 		animations: true,
 		highlightNewest: true,
+		fadeByAge: false, // places visited long ago are drawn fainter, recent ones in full color
+		fadeStrength: 0.6, // 0 = no fading … 0.95 = the oldest places almost vanish
+		fadeYears: 10, // visits this many years ago (or more) get the full fade
 		showPlanned: true,
 		showLegend: true,
 		showProblems: true,
@@ -503,6 +506,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 		const countryLayer = svgEl("g", { class: "wmtc-countries" });
 		const states = view ? view.countries : {};
 		const showPlanned = this.config.showPlanned;
+		const fade = { enabled: Boolean(this.config.fadeByAge), strength: this.config.fadeStrength, years: this.config.fadeYears };
+		const month = this.model && this.model.currentMonth;
+		const fadeStyle = (last) => {
+			const f = WMTCLayout.fadeFactor(last, month, fade);
+			return f < 1 ? `;--wmtc-fade:${f}` : "";
+		};
 		for (const f of this.features) {
 			const d = path(f);
 			if (!d) continue;
@@ -510,7 +519,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 			const attrs = { d, class: "wmtc-country" };
 			if (state && (state.state === "visited" || showPlanned)) {
 				attrs.class += ` wmtc-${state.state}`;
-				attrs.style = `--wmtc-color:${WMTCLayout.colorFor(state.group, this.colors)}`;
+				attrs.style = `--wmtc-color:${WMTCLayout.colorFor(state.group, this.colors)}${state.state === "visited" ? fadeStyle(state.last) : ""}`;
 				if (analog && state.state === "visited") attrs.filter = `url(#${filterId})`;
 			}
 			const p = svgEl("path", attrs);
@@ -532,7 +541,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 				cy: xy[1].toFixed(1),
 				r,
 				class: pin.planned ? "wmtc-pin wmtc-pin-planned" : "wmtc-pin",
-				style: `--wmtc-color:${color}`
+				style: `--wmtc-color:${color}${pin.planned ? "" : fadeStyle(pin.last)}`
 			});
 			circle.appendChild(svgEl("title", {}, `${pin.city}${pin.visits > 1 ? ` (${pin.visits} visits)` : ""}`));
 			pinLayer.appendChild(circle);
