@@ -1,24 +1,31 @@
 {
   "name": "mmm-worldmaptravelcollector",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "description": "MagicMirror² module that maps everywhere you've traveled, solo or together, with a notebook-style ledger of places and dates, travel stats, and a phone-friendly editor.",
+  "type": "commonjs",
   "main": "MMM-WorldMapTravelCollector.js",
   "author": "I-dontknowwhatImdoing",
   "license": "MIT",
+  "homepage": "https://github.com/I-dontknowwhatImdoing/MMM-WorldMapTravelCollector#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/I-dontknowwhatImdoing/MMM-WorldMapTravelCollector.git"
   },
+  "bugs": {
+    "url": "https://github.com/I-dontknowwhatImdoing/MMM-WorldMapTravelCollector/issues"
+  },
   "keywords": [
     "MagicMirror",
-    "MagicMirror2",
     "module",
     "travel",
+    "travel map",
     "world map",
-    "places visited"
+    "places visited",
+    "travel tracker",
+    "map"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "jest",

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Settings names, docs and requirements
+
+- `filters` is now called `views`, and `defaultFilter` is `defaultView`. The old names still work. New notification names `WMTC_SET_VIEW` (with `{ view }`), `WMTC_NEXT_VIEW` and `WMTC_PREV_VIEW`; the `*_FILTER` ones still work.
+- Needs Node.js 22 or newer (MagicMirror 2.38 already does). Tests run on Node 22 and 24.
+- The README is rewritten for people setting up a mirror: a 5-step quick start, 4 ready-made setups (a couple, one traveler, a portrait mirror, a TV), options in groups, and sections on updating, privacy, offline use, backups, uninstalling and troubleshooting.
+- Templates for reporting problems and asking for features on GitHub, automatic dependency update checks, and a code of conduct.
+
 ### Mirror: getting started, readability and speed
 
 - "Add trips from your phone": the map shows the trip editor's address and a QR code to scan, in the middle when there are no trips yet and in a corner for the first 10 minutes after each start. If MagicMirror only lets the mirror itself in (its default), the mirror says so and points to the README instead. New option `showEditorLink` (`"auto"`, `true`, `false`).

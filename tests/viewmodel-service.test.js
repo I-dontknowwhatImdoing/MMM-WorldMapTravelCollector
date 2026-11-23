@@ -144,6 +144,13 @@ describe("trip service", () => {
 
 	const config = { travelers: [{ name: "Alex", color: "#4FC3F7" }, "Sam"], filters: ["all", "together", "solo"], home: { city: "Boston", country: "US" } };
 
+	test("views come from \"views\", or \"filters\" (the name before 1.0)", () => {
+		const ids = (cfg) => createTripService({ dataDir: dir, config: cfg, geo, clock: () => NOW }).load().views.map((v) => v.id);
+		expect(ids({ travelers: ["Alex", "Sam"], views: ["all", "together"] })).toEqual(["all", "together"]);
+		expect(ids({ travelers: ["Alex", "Sam"], filters: ["all", "solo"] })).toEqual(["all", "solo:Alex", "solo:Sam"]);
+		expect(ids({ travelers: ["Alex", "Sam"], views: ["together"], filters: ["all"] })).toEqual(["together"]);
+	});
+
 	test("no data yet", () => {
 		const svc = createTripService({ dataDir: dir, config, geo, clock: () => NOW });
 		const model = svc.load();
