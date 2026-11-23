@@ -42,14 +42,18 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | --- | --- | --- |
 | `travelers` | `[]` | Who travels: `{ name, color }` per person, or just names |
 | `togetherColor` | `"#FFD54F"` | Color for trips everyone took together |
+| `colorBy` | `"travelers"` | What the map's colors mean: `"travelers"` (together, or each person's color), `"year"` (the year of the most recent visit) or `"month"` (the calendar month of the most recent visit, by season) |
+| `yearColors` | `"gradient"` | For `colorBy: "year"`: `"gradient"` (oldest to newest), `"distinct"` (a clearly different color each year; they repeat after 8 years), or your own colors for some years, e.g. `{ 2025: "#E57373" }` (other years use the gradient) |
+| `yearGradient` | `["#5C6BC0", "#4DB6AC", "#FFD54F"]` | The gradient's colors, oldest year first. Two or more |
+| `monthColors` | seasonal | For `colorBy: "month"`: 12 colors, January first, to replace the seasonal ones |
 | `home` | `null` | `{ city: "Boston", country: "US" }` or `{ lat, lon }`. Needed for the distance stat |
 | `theme` | `"digital"` | `"digital"` (light lines on black, for mirrors) or `"analog"` (paper and ink, for TVs and frames) |
 | `layout` | `"fullscreen"` | `"fullscreen"` (use a `fullscreen_below`/`fullscreen_above` position) or `"centered"` (any position) |
 | `maxWidth`, `maxHeight` | `"90%"`, `"80%"` | Size when `layout` is `"centered"`. Percentages are of the screen |
 | `projection` | `"equalEarth"` | The map's shape: `"equalEarth"` (curved edges, true sizes), `"naturalEarth"` (less curved), `"equirectangular"` (a flat rectangle that fills the width) or `"mercator"` (flat, but countries near the poles look much bigger) |
 | `hideAntarctica` | `true` | Leave Antarctica off the map |
-| `filters` | `["all", "together", "solo"]` | Views to offer. `"solo"` adds one per traveler; `"person"` adds "every trip with this person" |
-| `defaultFilter` | `"all"` | View to start on, e.g. `"together"` or `"solo:Sam"` |
+| `filters` | `["all", "together", "solo"]` | Views to offer. `"solo"` adds one per traveler; `"person"` adds "every trip with this person"; `"years"` adds one per year with trips (newest first); `"months"` adds one per calendar month (all your March trips, any year). Single ones work too: `"year:2025"`, `"month:3"` |
+| `defaultFilter` | `"all"` | View to start on, e.g. `"together"`, `"solo:Sam"` or `"year:2025"` |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
 | `touchPause` | `120` | Seconds rotation pauses after a tap or a command |
 | `details` | `true` | Tap (or click) a pin or a country to see its trips: when, how many days, who went, notes, and for a country the number of trips and cities, first and latest visit |

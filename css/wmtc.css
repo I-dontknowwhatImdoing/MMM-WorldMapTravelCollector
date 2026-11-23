@@ -619,3 +619,16 @@
 .wmtc-theme-analog .wmtc-pin.wmtc-selected {
 	stroke: var(--wmtc-ink);
 }
+
+/* Color key when colorBy is "year" or "month" */
+
+.wmtc-key {
+	gap: 0.5em;
+}
+
+.wmtc-key-gradient {
+	display: inline-block;
+	width: 7em;
+	height: 0.6em;
+	border-radius: 0.3em;
+}

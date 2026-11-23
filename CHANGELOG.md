@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Map: views and colors by year or month
+
+- New views: `"years"` in `filters` adds one view per year with trips; `"months"` one per calendar month (all Marches together). Single ones: `"year:2025"`, `"month:3"`. Month names follow MagicMirror's language.
+- `colorBy`: color the map by `"travelers"` (as before, the default), `"year"` or `"month"`. Each place takes the color of its most recent visit in the view.
+- Year colors: `yearColors: "gradient"` (oldest to newest, colors set by `yearGradient`), `"distinct"`, or chosen colors for some years. Month colors follow the seasons; `monthColors` replaces them.
+- A color key shows what the colors mean, unless the view chips already do.
+
 ### Map: details on tap, flat map shape
 
 - Tap a pin to see that city's visits (month, days, who went, notes) and a summary when there are several.
