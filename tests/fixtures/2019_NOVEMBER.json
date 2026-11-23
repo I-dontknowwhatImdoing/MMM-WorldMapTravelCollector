@@ -1,0 +1,68 @@
+{
+ "timelineObjects": [
+  {
+   "activitySegment": {
+    "startLocation": {
+     "latitudeE7": 423601000,
+     "longitudeE7": -710589000
+    },
+    "duration": {
+     "startTimestamp": "2019-11-02T10:00:00Z",
+     "endTimestamp": "2019-11-02T20:00:00Z"
+    }
+   }
+  },
+  {
+   "placeVisit": {
+    "location": {
+     "latitudeE7": -135319000,
+     "longitudeE7": -719675000,
+     "placeId": "x",
+     "address": "Cusco, Peru",
+     "name": "Plaza de Armas"
+    },
+    "duration": {
+     "startTimestamp": "2019-11-03T15:00:00.000Z",
+     "endTimestamp": "2019-11-06T13:00:00.000Z"
+    }
+   }
+  },
+  {
+   "placeVisit": {
+    "location": {
+     "latitudeE7": -346037000,
+     "longitudeE7": -583816000,
+     "name": "Obelisco"
+    },
+    "duration": {
+     "startTimestampMs": "1573225200000",
+     "endTimestampMs": "1573484400000"
+    }
+   }
+  },
+  {
+   "placeVisit": {
+    "location": {
+     "latitudeE7": 423601000,
+     "longitudeE7": -710589000,
+     "semanticType": "TYPE_HOME"
+    },
+    "duration": {
+     "startTimestamp": "2019-11-12T00:00:00Z",
+     "endTimestamp": "2019-11-20T00:00:00Z"
+    }
+   }
+  },
+  {
+   "placeVisit": {
+    "location": {
+     "name": "No coordinates"
+    },
+    "duration": {
+     "startTimestamp": "2019-11-12T00:00:00Z",
+     "endTimestamp": "2019-11-13T00:00:00Z"
+    }
+   }
+  }
+ ]
+}

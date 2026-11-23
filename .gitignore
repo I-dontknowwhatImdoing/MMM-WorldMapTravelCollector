@@ -8,3 +8,4 @@ data/trips.json
 data/trips.csv
 data/geocache.json
 data/backups/
+data/sheet-cache.csv

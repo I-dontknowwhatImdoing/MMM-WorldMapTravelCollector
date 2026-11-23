@@ -90,4 +90,36 @@ describe("node_helper", () => {
 		expect(h.sent[0][1].model.views.map((v) => v.id)).toEqual(["all"]);
 		h.stop();
 	});
+
+	test("mounts the trip editor on MagicMirror's web server", async () => {
+		const routes = [];
+		const def = require("../node_helper");
+		const h = Object.create(def);
+		h.name = "MMM-WorldMapTravelCollector";
+		h.path = path.join(__dirname, "..");
+		h.sent = [];
+		h.sendSocketNotification = (n, p) => h.sent.push([n, p]);
+		h.expressApp = { use: (route, fn) => routes.push([route, fn]) };
+		h.start();
+		expect(routes.map((r) => r[0])).toEqual(["/MMM-WorldMapTravelCollector"]);
+		expect(Log.info).toHaveBeenCalledWith(expect.stringContaining("Trip editor at http://<this mirror's address>:8080/MMM-WorldMapTravelCollector/"));
+		expect(h.editorContext()).toBeNull();
+
+		h.socketNotificationReceived("WMTC_INIT", { identifier: "m1", config: { travelers: ["Alex"], dataDir: dir } });
+		h.socketNotificationReceived("WMTC_INIT", { identifier: "m2", config: { travelers: ["Alex", "Sam"], dataDir: dir } });
+		expect(h.editorContext().config.travelers).toEqual(["Alex", "Sam"]);
+		expect(h.editorContext().dataDir).toBe(dir);
+
+		// The mounted function answers like the editor does.
+		const res = { headers: null, body: null, headersSent: false, writeHead (status, headers) {
+			this.status = status;
+			this.headers = headers;
+		}, end (body) {
+			this.body = body;
+		} };
+		await routes[0][1]({ method: "GET", url: "/api/state", headers: {}, socket: {} }, res);
+		expect(res.status).toBe(200);
+		expect(JSON.parse(res.body).travelers).toEqual([{ name: "Alex" }, { name: "Sam" }]);
+		h.stop();
+	});
 });

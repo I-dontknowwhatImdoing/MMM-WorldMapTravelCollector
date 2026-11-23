@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Our trips</name>
+    <Folder>
+      <name>Italy 2022</name>
+      <Placemark>
+        <name>Colosseum</name>
+        <description><![CDATA[<b>Amazing</b> &amp; huge]]></description>
+        <Point><coordinates>12.4922,41.8902,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Uffizi &amp; friends</name>
+        <Point>
+          <coordinates>
+            11.2553,43.7678,0
+          </coordinates>
+        </Point>
+      </Placemark>
+      <Placemark>
+        <name>Drive along the coast</name>
+        <LineString><coordinates>9.6750,44.1300,0 9.7050,44.1450,0</coordinates></LineString>
+      </Placemark>
+    </Folder>
+    <Placemark><name>No geometry</name></Placemark>
+    <Placemark><name>Middle of the ocean</name><Point><coordinates>-30,0,0</coordinates></Point></Placemark>
+  </Document>
+</kml>

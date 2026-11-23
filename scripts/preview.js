@@ -7,8 +7,9 @@
  *   npm run preview                  # http://localhost:8099
  *   PORT=9000 npm run preview
  *
- * Uses data/trips.json if you have one, otherwise the example trips.
+ * Uses data/trips.json if you have one, otherwise a temporary copy of the example trips.
  * URL options: ?view=together&theme=digital&layout=centered&config={"projection":"mercator"}
+ * The trip editor runs at http://localhost:8099/MMM-WorldMapTravelCollector/
  */
 
 const fs = require("node:fs");
@@ -17,6 +18,8 @@ const http = require("node:http");
 const path = require("node:path");
 const { loadGeoData } = require("../lib/geodata");
 const { createTripService } = require("../lib/service");
+const { createEditorHandler } = require("../lib/editor-server");
+const { importRecords, recordsFromText } = require("../lib/pipeline");
 
 const ROOT = path.join(__dirname, "..");
 const TYPES = { ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".html": "text/html", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
@@ -29,8 +32,10 @@ const PREVIEW_DEFAULTS = {
 function exampleDataDir () {
 	const own = path.join(ROOT, "data");
 	if (fs.existsSync(path.join(own, "trips.json")) || fs.existsSync(path.join(own, "trips.csv"))) return own;
+	// A temporary trips.json (not .csv), so the editor can change the sample trips.
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "wmtc-preview-"));
-	fs.copyFileSync(path.join(ROOT, "data", "trips.example.csv"), path.join(tmp, "trips.csv"));
+	const { records } = recordsFromText(fs.readFileSync(path.join(ROOT, "data", "trips.example.csv"), "utf8"), "x.csv");
+	importRecords({ file: path.join(tmp, "trips.json"), records, travelerNames: PREVIEW_DEFAULTS.travelers.map((t) => t.name), geo: loadGeoData() });
 	return tmp;
 }
 
@@ -83,10 +88,21 @@ function previewPage () {
 </body></html>`;
 }
 
-function createServer ({ dataDir = exampleDataDir(), clock } = {}) {
+const EDITOR_PREFIX = "/MMM-WorldMapTravelCollector";
+
+function createServer ({ dataDir = exampleDataDir(), clock, config: extraConfig = {} } = {}) {
 	const geo = loadGeoData();
+	const editorConfig = { ...PREVIEW_DEFAULTS, ...extraConfig };
+	const editorService = createTripService({ dataDir, config: editorConfig, geo, clock });
+	const editor = createEditorHandler({ getContext: () => ({ config: editorConfig, dataDir, geo, service: editorService }), clock });
 	return http.createServer((req, res) => {
 		const url = new URL(req.url, "http://localhost");
+		if (url.pathname === EDITOR_PREFIX || url.pathname.startsWith(`${EDITOR_PREFIX}/`)) {
+			// Same shape as Express's app.use(prefix, handler) in MagicMirror.
+			req.originalUrl = req.url;
+			req.url = req.url.slice(EDITOR_PREFIX.length) || "/";
+			return editor(req, res);
+		}
 		try {
 			if (url.pathname === "/") {
 				res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -117,6 +133,7 @@ if (require.main === module) {
 	const fixed = process.env.PREVIEW_DATE ? new Date(process.env.PREVIEW_DATE) : null;
 	createServer({ clock: fixed ? () => fixed : undefined }).listen(port, () => {
 		console.log(`Preview running at http://localhost:${port}`);
+		console.log(`Trip editor at http://localhost:${port}${EDITOR_PREFIX}/`);
 	});
 }
 

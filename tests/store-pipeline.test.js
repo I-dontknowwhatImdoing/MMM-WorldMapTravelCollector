@@ -7,7 +7,8 @@ const { readTripsFile, writeTripsFile, MAX_BACKUPS } = require("../lib/store");
 const { recordsFromText, importRecords } = require("../lib/pipeline");
 const { run, parseArgs } = require("../scripts/import");
 const { loadGeoData } = require("../lib/geodata");
-const { trip } = require("./helpers");
+const { trip, ctx } = require("./helpers");
+const { validateTrips } = require("../lib/schema");
 
 const BOM = String.fromCharCode(0xfeff);
 const EXAMPLE_CSV = path.join(__dirname, "..", "data", "trips.example.csv");
@@ -144,8 +145,11 @@ describe("import command", () => {
 		expect(run([EXAMPLE_CSV, "--travelers", "Alex,Sam", "--out", target], log)).toBe(0);
 		expect(out.pop()).toMatch(/^Added 22 trips, merged 0 duplicates, skipped 0\. 22 trips in /);
 		const trips = readTripsFile(target);
-		expect(trips.every((t) => t.city === "" || (Number.isFinite(t.lat) && Number.isFinite(t.lon)))).toBe(true);
-		expect(trips.find((t) => t.note === "Paris, Texas")).toMatchObject({ country: "US", lat: 33.6609 });
+		// Looked-up coordinates aren't saved (renaming a city must move its pin); hand-set ones are.
+		expect(trips.find((t) => t.city === "Lisbon")).not.toHaveProperty("lat");
+		const texas = validateTrips(trips.filter((t) => t.note === "Paris, Texas"), ctx()).trips[0];
+		expect(texas).toMatchObject({ country: "US" });
+		expect(texas.lat).toBeCloseTo(33.6609, 3);
 	});
 
 	test("dry run, help, missing travelers", () => {

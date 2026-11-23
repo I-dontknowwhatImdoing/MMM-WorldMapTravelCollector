@@ -13,6 +13,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 		// Data
 		dataDir: "",
+		sheetUrl: "", // a Google Sheet shared with File → Share → Publish to web → CSV
+		sheetRefreshMinutes: 30,
+
+		// Web editor at http://<mirror>:8080/MMM-WorldMapTravelCollector/
+		editor: true,
+		editorPin: "",
+		homeRadiusKm: 50, // Timeline import: visits this close to home aren't trips
 
 		// Look
 		layout: "fullscreen", // "fullscreen" | "centered"
@@ -431,8 +438,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 	},
 
 	renderFooter () {
-		const problems = this.model && this.model.problems ? this.model.problems.length : 0;
-		this.footerEl.textContent = this.config.showProblems && problems ? `${problems} row${problems === 1 ? "" : "s"} skipped. Check your trips file.` : "";
+		const problems = this.model && this.model.problems ? this.model.problems : [];
+		const fileLevel = problems.find((p) => p && p.row === 0);
+		const rows = problems.filter((p) => !p || p.row !== 0).length;
+		let message = "";
+		if (fileLevel) message = `${fileLevel.source}: ${(fileLevel.errors || [])[0] || "couldn't be read"}`;
+		else if (rows) message = `${rows} row${rows === 1 ? "" : "s"} skipped. Open the trip editor to see why.`;
+		this.footerEl.textContent = this.config.showProblems ? message : "";
 	},
 
 	/** Height the map needs at a given width, so on tall screens the ledger sits right under it. */

@@ -6,7 +6,7 @@ A [MagicMirror²](https://magicmirror.builders/) module that maps everywhere you
 | --- | --- |
 | ![Digital theme](screenshots/digital-all.png) | ![Analog theme](screenshots/analog-all.png) |
 
-> **Status:** pre-release. The map, ledger, stats and both themes work; the phone-friendly web editor and Google Sheets / Google Maps imports are coming. See [CHANGELOG.md](CHANGELOG.md).
+> **Status:** pre-release. The map, ledger, stats, both themes, the phone editor and the Google Sheets / Google Maps imports all work. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
@@ -17,7 +17,7 @@ cd MMM-WorldMapTravelCollector
 npm install --omit=dev
 ```
 
-Add your trips to `data/trips.json` or `data/trips.csv` (see [Trip data](#trip-data)), then add the module to `config/config.js`:
+Add the module to `config/config.js`:
 
 ```javascript
 {
@@ -32,7 +32,7 @@ Add your trips to `data/trips.json` or `data/trips.csv` (see [Trip data](#trip-d
 },
 ```
 
-The mirror picks up changes to your trips file within a second. No restart is needed.
+Restart MagicMirror, then add your trips from your phone with the [trip editor](#the-trip-editor), or put them in `data/trips.json` / `data/trips.csv` yourself (see [Trip data](#trip-data)). The mirror picks up changes within a second. No restart is needed.
 
 To update later: `git pull && npm install --omit=dev`, then restart MagicMirror. Your `data/trips.json` is never touched by updates.
 
@@ -62,6 +62,11 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `animations` | `true` | Turn off all motion |
 | `showProblems` | `true` | Show a note when rows in your trips file were skipped |
 | `dataDir` | module's `data/` | Folder holding `trips.json` / `trips.csv` |
+| `sheetUrl` | `""` | A Google Sheet to read trips from (see [Google Sheet](#google-sheet)) |
+| `sheetRefreshMinutes` | `30` | How often the sheet is checked |
+| `editor` | `true` | Serve the [trip editor](#the-trip-editor). `false` turns it off |
+| `editorPin` | `""` | A PIN the editor asks for. Empty means no PIN |
+| `homeRadiusKm` | `50` | Timeline imports leave out visits this close to `home` |
 | `ledger` | see below | The list of places under the map |
 
 `ledger` options (you only need to give the ones you change):
@@ -79,6 +84,73 @@ To update later: `git pull && npm install --omit=dev`, then restart MagicMirror.
 | `showDays` | `false` | Add the days spent, e.g. "5d" |
 | `dateFormat` | `"MMM YYYY"` | Tokens: `YYYY`, `YY`, `MMMM` (March), `MMM` (Mar), `MM` (03), `M` (3). Month names follow MagicMirror's `language` |
 | `showPlanned` | `false` | Include future trips in the ledger |
+
+## The trip editor
+
+Add, change and delete trips from your phone. The mirror serves the editor itself, so there's nothing else to install:
+
+```
+http://<your mirror's address>:8080/MMM-WorldMapTravelCollector/
+```
+
+| Trips | Add a trip | Import a Timeline |
+| --- | --- | --- |
+| ![Trip list](screenshots/editor-trips.png) | ![Add a trip](screenshots/editor-add.png) | ![Import review](screenshots/editor-import.png) |
+
+- **Trips**: every trip, newest first, with search. Tap one to change or delete it. Rows that can't be shown on the mirror (a typo in a city, say) are listed at the top so you can fix them.
+- **Add**: pick the country, start typing the city and choose it from the list, then the month and who went. The same city and month as an existing trip is combined with it, so if you each add Lisbon, March 2025, it becomes a together trip.
+- **Import**: Google Maps Timeline, saved places, My Maps and spreadsheets (see [Importing](#importing-from-google-maps-and-spreadsheets)). You check everything before it's saved.
+- **More**: download all trips as a spreadsheet, and put back one of the last 10 versions of your list.
+
+### Opening the editor from your phone
+
+Out of the box, MagicMirror only answers the Pi itself. To use the editor from a phone on your home Wi-Fi, change two settings at the top of `config/config.js` (not inside the module's config):
+
+```javascript
+let config = {
+	address: "0.0.0.0", // listen on the network, not just the Pi
+	port: 8080,
+	ipWhitelist: ["127.0.0.1", "::ffff:127.0.0.1", "::1", "::ffff:192.168.1.1/120", "192.168.1.1/24"], // the Pi plus your home network
+	// ...
+```
+
+Use your own network in place of `192.168.1.1` (both times): if your phone's address is `192.168.0.23`, use `192.168.0.1`. To find the mirror's address, run `hostname -I` on the Pi. Restart MagicMirror after the change.
+
+This only opens the mirror to devices on your home network. Don't forward port 8080 on your router: that would put your mirror on the internet. If others use your Wi-Fi, set `editorPin: "1234"` (your own number) in the module's config, and the editor will ask for it once per phone. Five wrong tries lock it for a minute.
+
+Every change keeps a backup of the list from before (the last 10 are kept in `data/backups/`), and the editor can put any of them back.
+
+## Importing from Google Maps and spreadsheets
+
+In the editor, open **Import**, tap whose trips these are, and choose the file. Nothing is saved until you've reviewed the list and tapped **Save**.
+
+| What | How to get the file | What you get |
+| --- | --- | --- |
+| **Google Maps Timeline** (Android) | Phone Settings → Location → Location services → Timeline → **Export Timeline data** | One trip per city and month, with the days you were there. Visits within `homeRadiusKm` of `home` are left out, and stops under 2 hours (often layovers) start unticked |
+| **Google Maps Timeline** (iPhone) | Google Maps app → your picture → Settings → Personal content → **Export Timeline data** | Same as above |
+| **Older Timeline history** | [Google Takeout](https://takeout.google.com) → Location History. Upload the whole zip or the `Semantic Location History` files | Same as above |
+| **Saved and starred places** | [Google Takeout](https://takeout.google.com) → "Maps (your places)" and "Saved". Upload the zip | One trip per city, without dates: set the month in the review (for one row or all at once). Places from a "Want to go" list start unticked |
+| **Google My Maps** | Open the map → ⋮ → **Export to KML/KMZ** | Same as saved places |
+| **A spreadsheet** | Save it as CSV | Columns are matched by name (city, country, date, who, …), and you can match the rest by hand |
+
+**Two people, one map:** import each person's Timeline separately and tap their name each time. Trips to the same city in the same month are combined into one together trip.
+
+If `home` isn't set in your config, the Timeline import guesses it from where you spent the most time and tells you which city it picked.
+
+## Google Sheet
+
+Keep your trips in a Google Sheet instead of (or as well as) the editor. Use the same columns as [Trip data](#trip-data): `city`, `country`, `date`, `travelers`, and optionally `days`, `lat`, `lon`, `note`.
+
+1. In Google Sheets: **File → Share → Publish to web**. Pick the sheet with your trips, choose **Comma-separated values (.csv)**, and click **Publish**.
+2. Copy the link it shows and put it in the module's config:
+
+	```javascript
+	sheetUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?output=csv",
+	```
+
+The mirror checks the sheet every `sheetRefreshMinutes` (30 by default), and the editor's **More** tab has a **Check the sheet now** button. Sheet trips show in the editor with a lock: change them in the sheet. The last copy is kept in `data/sheet-cache.csv`, so the mirror still shows them after a restart without internet. A normal sharing link also works if the sheet is shared as "Anyone with the link".
+
+If something's wrong (the sheet isn't published, the link is mistyped), the mirror says so in small text under the ledger.
 
 ## Controlling it from other modules
 
@@ -132,7 +204,7 @@ node scripts/import.js my-trips.csv --travelers "Alex,Sam" --dry-run   # check o
 node scripts/import.js my-trips.csv --travelers "Alex,Sam"             # save to data/trips.json
 ```
 
-Rows that can't be read are listed with the reason and skipped. Duplicates (same place and month) are merged, and their travelers are combined.
+Rows that can't be read are listed with the reason and skipped. (The editor's **Import** tab does the same with a review screen, and also reads Google Maps files.) Duplicates (same place and month) are merged, and their travelers are combined.
 
 ## Development
 

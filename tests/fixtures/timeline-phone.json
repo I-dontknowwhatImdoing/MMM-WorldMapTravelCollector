@@ -1,0 +1,196 @@
+{
+ "semanticSegments": [
+  {
+   "startTime": "2025-02-28T18:00:00.000-05:00",
+   "endTime": "2025-03-01T08:00:00.000-05:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "HOME",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "42.3601°, -71.0589°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-01T08:00:00.000-05:00",
+   "endTime": "2025-03-01T09:00:00.000-05:00",
+   "activity": {
+    "start": {
+     "latLng": "42.36°, -71.05°"
+    },
+    "end": {
+     "latLng": "42.36°, -71.01°"
+    },
+    "topCandidate": {
+     "type": "IN_PASSENGER_VEHICLE"
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-01T08:00:00.000-05:00",
+   "endTime": "2025-03-01T10:00:00.000-05:00",
+   "timelinePath": [
+    {
+     "point": "42.3656°, -71.0096°",
+     "time": "2025-03-01T08:30:00.000-05:00"
+    }
+   ]
+  },
+  {
+   "startTime": "2025-03-01T09:00:00.000-05:00",
+   "endTime": "2025-03-01T11:00:00.000-05:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "42.3656°, -71.0096°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-02T07:00:00.000+01:00",
+   "endTime": "2025-03-02T08:30:00.000+01:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "50.0379°, 8.5622°"
+     }
+    }
+   },
+   "startTimeTimezoneUtcOffsetMinutes": 60
+  },
+  {
+   "startTime": "2025-03-02T14:00:00.000+00:00",
+   "endTime": "2025-03-05T10:00:00.000+00:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "38.7110°, -9.1366°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-03T10:00:00.000+00:00",
+   "endTime": "2025-03-03T11:00:00.000+00:00",
+   "visit": {
+    "hierarchyLevel": 1,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "38.7115°, -9.1370°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-04T10:00:00.000+00:00",
+   "endTime": "2025-03-04T16:00:00.000+00:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "38.7976°, -9.3906°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-05T11:00:00.000+00:00",
+   "endTime": "2025-03-05T15:00:00.000+00:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "38.6916°, -9.2160°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2025-03-05T17:00:00.000+00:00",
+   "endTime": "2025-03-05T17:10:00.000+00:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "38.7400°, -9.1000°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2024-10-10T09:00:00.000+09:00",
+   "endTime": "2024-10-12T20:00:00.000+09:00",
+   "visit": {
+    "hierarchyLevel": 0,
+    "probability": 0.9,
+    "topCandidate": {
+     "placeId": "ChIJ_fake",
+     "semanticType": "UNKNOWN",
+     "probability": 0.8,
+     "placeLocation": {
+      "latLng": "35.0116°, 135.7681°"
+     }
+    }
+   }
+  },
+  {
+   "startTime": "2024-10-13T09:00:00.000+09:00",
+   "endTime": "2024-10-13T10:00:00.000+09:00",
+   "visit": {
+    "topCandidate": {
+     "placeLocation": {}
+    }
+   }
+  },
+  {
+   "visit": {
+    "topCandidate": {
+     "placeLocation": {
+      "latLng": "35.0°, 135.7°"
+     }
+    }
+   }
+  }
+ ],
+ "rawSignals": [],
+ "userLocationProfile": {
+  "frequentPlaces": []
+ }
+}
