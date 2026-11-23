@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Milestone 3: Ledger, stats, views and the Analog theme
+
+- Ledger: a ruled grid of places and dates under the map, newest first. Rows, columns, sort order, date format, traveler markers (dots, initials, color), country and days are all options.
+- When trips don't fit: turn pages on a timer, or shrink the text down to a minimum and show "+N more".
+- Stats line: countries, cities, continents, % of the world, trips this year, distance from home. Pick which ones and their order.
+- View chips that double as the color key. Tap one on a touch screen to switch.
+- Views rotate on a timer with a fade, and pause after a tap or a command.
+- Commands from other modules: `WMTC_SET_FILTER`, `WMTC_NEXT_FILTER`, `WMTC_PREV_FILTER`, `WMTC_NEXT_PAGE`, `WMTC_SET_THEME`.
+- Analog theme: paper texture, sepia ink, map grid lines, soft watercolor fills, a notebook-style ledger and bundled open-license fonts.
+- Text sizes now follow screen area, so portrait mirrors get readable text.
+- Timers stop while MagicMirror hides the module.
+- More sample trips in `data/trips.example.csv`.
+
 ### Milestone 2: The map
 
 - World map drawn as SVG, sized to any screen (Pi screens, portrait mirrors, 4K TVs) and redrawn on resize.

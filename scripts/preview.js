@@ -49,6 +49,7 @@ function previewPage () {
 <script src="/node_modules/d3-geo/dist/d3-geo.min.js"></script>
 <script src="/node_modules/topojson-client/dist/topojson-client.min.js"></script>
 <script src="/lib/layout.js"></script>
+<script src="/lib/ledger.js"></script>
 <script src="/MMM-WorldMapTravelCollector.js"></script>
 <link rel="stylesheet" href="/css/wmtc.css">
 </head><body>

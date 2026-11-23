@@ -22,7 +22,7 @@ export default [
 		}
 	},
 	{
-		files: ["MMM-WorldMapTravelCollector.js", "lib/layout.js"],
+		files: ["MMM-WorldMapTravelCollector.js", "lib/layout.js", "lib/ledger.js"],
 		languageOptions: { globals: { ...globals.browser } }
 	},
 	{
