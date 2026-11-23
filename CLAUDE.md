@@ -1,9 +1,10 @@
 # MMM-WorldMapTravelCollector: notes for Claude
 
-A MagicMirror² module: a world map of trips (countries shaded, cities pinned) with views by traveler, year or month, a ledger grid of places and dates, a stats line, Digital/Analog themes, and a phone editor served by MagicMirror. It is listed on the MagicMirror 3rd-party module list, so every choice is a config option with a sensible default.
+A MagicMirror² module: a world map of trips (a pin per place; countries can be shaded) with views by traveler, year or month, a ledger grid of places and dates, a stats line, Digital/Analog themes, and a phone editor served by MagicMirror. It is listed on the MagicMirror 3rd-party module list, so every choice is a config option with a sensible default.
 
 - The owner tests on a Raspberry Pi 4 and is not a developer: explain changes in plain words and send screenshots of visual changes.
-- Ideas for later: timeline view (Jan–Dec × years), zoom to a region, specific spots, photos, a "days traveled" stat, settings in the editor.
+- Ideas for later: timeline view (Jan–Dec × years), zoom to a region, specific spots, photos, settings in the editor.
+- README screenshots come from the preview with the sample trips (fixed date 2026-11-23, `?editor=off`, rotation off); the main image must be `screenshots/screenshot.png` for the module list.
 
 ## Decisions already made
 

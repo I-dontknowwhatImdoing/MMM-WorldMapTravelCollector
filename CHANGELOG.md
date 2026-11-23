@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (not released yet)
+
+The first release for MagicMirror's module list. In short:
+
+- **A world map of your trips.** A pin for every place, in each traveler's color or gold for trips taken together, and hollow pins for planned trips. Visited countries can be shaded too (`shadeCountries`). Four map shapes, a Digital theme for mirrors and an Analog (paper and ink) theme for TVs and frames.
+- **People, Years and Months tabs.** View all trips, trips together, each person's trips, a year or a month. The mirror takes turns through the tab on screen, and the colors follow it.
+- **A list of places and dates** under the map, and a stats line (countries, cities, continents, share of the world, trips this year, distance, plus eight more to choose from, like the next trip and days traveled).
+- **Tap a place** on a touch screen for its visits, days and who went.
+- **A phone editor** served by the mirror itself: add, change and delete trips, with city suggestions, Undo and backups. The mirror shows a QR code to open it.
+- **Imports** from Google Maps Timeline, saved places, My Maps and spreadsheets, with a review before anything is saved, or trips kept in a Google Sheet.
+- **Works offline**: the map and 135,000 cities are built in, and nothing about your trips leaves the mirror. Needs Node.js 22 or newer.
+
+What changed on the way there, newest first:
 
 ### All in every tab; a smaller QR code
 
