@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### People · Years · Months tabs
+
+- New tabs before the view buttons switch between **People** (all, together, each person), **Years** and **Months**. Only that group's buttons show, so a mirror with many years doesn't fill up with buttons. The mirror takes turns only through the chosen group. `viewGroups: false` goes back to one row.
+- The default views now include `"years"` and `"months"`, so the tabs show out of the box. Rotation still starts on People.
+- `colorBy: "auto"` is the new default: people's colors for People, years for Years, months for Months. Setting `colorBy` keeps one coloring everywhere.
+- Group tab names can be changed with `labels` (`people`, `years`, `months`).
+
 ### Fixes from a usability walkthrough
 
 Three AI testers played a non-technical phone user, a guest at the mirror and a first-time installer. What they ran into:

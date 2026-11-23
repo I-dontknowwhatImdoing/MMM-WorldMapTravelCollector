@@ -63,7 +63,7 @@ Then restart MagicMirror. Updates never touch your trips (`data/trips.json`, `da
 
 Use one of these instead of the block from Quick start (replace it; don't add a second one), and change the names and home city to yours. Every line ends with a comma, so you can add more options under the last one. Every option is described under [Configuration](#configuration).
 
-**A couple, on a mirror.** Views for both of you together and each alone, the next trip and days away in the stats, and a PIN for the editor:
+**A couple, on a mirror.** The next trip and days away in the stats, and a PIN for the editor:
 
 ```javascript
 {
@@ -75,7 +75,6 @@ Use one of these instead of the block from Quick start (replace it; don't add a 
 			{ name: "Sam", color: "#F48FB1" },
 		],
 		home: { city: "Boston", country: "US" },
-		views: ["all", "together", "solo"],
 		stats: ["countries", "cities", "nextTrip", "daysTraveled"],
 		editorPin: "2580",
 	},
@@ -149,7 +148,7 @@ Some options take a list, like `views` and `stats`. Write a list in square brack
 | --- | --- | --- |
 | `travelers` | `[]` | Who travels: `{ name: "Alex", color: "#4FC3F7" }` per person, or just names (`["Alex", "Sam"]`) and colors are picked for you |
 | `togetherColor` | `"#FFD54F"` | Color for trips everyone took together |
-| `colorBy` | `"travelers"` | What the map's colors mean: `"travelers"` (together, or each person's color), `"year"` (the year of the most recent visit), `"month"` (the calendar month of the most recent visit) or `"season"` (winter, spring, summer or autumn: 4 colors, the easiest to read) |
+| `colorBy` | `"auto"` | What the map's colors mean. `"auto"` follows the group on screen: people's colors for People, years for Years, months for Months. Or always one of: `"travelers"` (together, or each person's color), `"year"` (the year of the most recent visit), `"month"` (the calendar month of the most recent visit) or `"season"` (winter, spring, summer or autumn: 4 colors, the easiest to read) |
 | `yearColors` | `"gradient"` | For `colorBy: "year"`: `"gradient"` (oldest to newest), `"distinct"` (a clearly different color each year; they repeat after 8 years), or your own colors for some years, e.g. `{ 2025: "#E57373" }` (other years use the gradient) |
 | `yearGradient` | `["#5C6BC0", "#4DB6AC", "#FFD54F"]` | The gradient's colors, oldest year first. Two or more |
 | `monthColors` | seasonal | For `colorBy: "month"`: 12 colors, January first. The built-in ones are chosen so people with red-green color blindness can tell every month apart |
@@ -193,12 +192,13 @@ Some options take a list, like `views` and `stats`. Write a list in square brack
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `views` | `["all", "together", "solo"]` | The views the mirror takes turns showing, as a list in square brackets, e.g. `views: ["all", "years", "solo:Sam"]`. Choose from: `"all"`; `"together"` (trips everyone took); `"solo"` (one view per traveler: trips they took alone); `"person"` (one per traveler: every trip they were on); `"years"` (one per year with trips, newest first); `"months"` (one per calendar month: all your March trips, any year). Single ones work too: `"solo:Sam"`, `"person:Sam"`, `"year:2025"`, `"month:3"`. Before 1.0 this was called `filters`, which still works |
+| `views` | `["all", "together", "solo", "years", "months"]` | The views to offer, as a list in square brackets, e.g. `views: ["all", "years", "solo:Sam"]`. Choose from: `"all"`; `"together"` (trips everyone took); `"solo"` (one view per traveler: trips they took alone); `"person"` (one per traveler: every trip they were on); `"years"` (one per year with trips, newest first); `"months"` (one per calendar month: all your March trips, any year). Single ones work too: `"solo:Sam"`, `"person:Sam"`, `"year:2025"`, `"month:3"`. Before 1.0 this was called `filters`, which still works |
 | `defaultView` | `"all"` | The view to start on, e.g. `"together"`, `"solo:Sam"` or `"year:2025"`. Before 1.0 this was `defaultFilter` |
+| `viewGroups` | `true` | When the views come from more than one group, tabs before the view buttons switch between **People** (all, together, each person), **Years** and **Months**. Only the chosen group's buttons show, and the mirror takes turns through that group. `false` shows every view in one row and takes turns through all of them |
 | `viewSwitcher` | `"auto"` | How views are offered: `"buttons"` (one per view), `"compact"` (one button showing the current view, with ‹ › either side and a dot per view) or `"auto"` (buttons while they fit on one line, compact when they don't) |
 | `rotateInterval` | `30` | Seconds between views. `0` turns rotation off |
 | `touchPause` | `120` | Seconds rotation pauses after a tap or a command from another module |
-| `labels` | `{}` | Your own words for the view buttons and the season key. `{name}` stands for the person, year or month. The defaults: `{ all: "All", together: "Together", solo: "{name} only", person: "All of {name}'s", year: "{name}", month: "{name}", winter: "Winter", spring: "Spring", summer: "Summer", autumn: "Autumn" }` |
+| `labels` | `{}` | Your own words for the view buttons, the group tabs and the season key. `{name}` stands for the person, year or month. The defaults: `{ all: "All", together: "Together", solo: "{name} only", person: "All of {name}'s", year: "{name}", month: "{name}", people: "People", years: "Years", months: "Months", winter: "Winter", spring: "Spring", summer: "Summer", autumn: "Autumn" }` |
 | `showLegend` | `true` | `false` hides the view buttons and the color key. Views still take turns |
 
 ### Tapping the map

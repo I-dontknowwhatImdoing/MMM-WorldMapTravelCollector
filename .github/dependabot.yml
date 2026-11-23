@@ -1,3 +1,5 @@
+# Once a month, one pull request with every library update (and, when there are any, one with the
+# GitHub test-tool updates). GitHub can't put the two kinds in the same pull request.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -5,9 +7,12 @@ updates:
     schedule:
       interval: monthly
     groups:
-      dev-tools:
-        dependency-type: development
+      all-libraries:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      all-test-tools:
+        patterns: ["*"]

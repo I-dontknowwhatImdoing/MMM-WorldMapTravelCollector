@@ -9,7 +9,7 @@ Module.register("MMM-WorldMapTravelCollector", {
 	defaults: {
 		travelers: [],
 		togetherColor: "#FFD54F",
-		colorBy: "travelers", // what map colors mean: "travelers" (together / each person) | "year" | "month" (Jan–Dec) | "season" (winter, spring, summer, autumn)
+		colorBy: "auto", // what map colors mean: "auto" (follows the group on screen: people, years or months) | "travelers" (together / each person) | "year" | "month" (Jan–Dec) | "season" (winter, spring, summer, autumn)
 		yearColors: "gradient", // colorBy "year": "gradient" (oldest → newest) | "distinct" (a different color each year) | { 2025: "#E57373" }
 		yearGradient: ["#5C6BC0", "#4DB6AC", "#FFD54F"], // gradient colors, oldest year first
 		monthColors: [], // colorBy "month": 12 colors, January first, to replace the seasonal ones
@@ -48,7 +48,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 		showProblems: true,
 
 		// Views
-		views: ["all", "together", "solo"], // also "person", "years", "months", "year:2025", "month:3" (was called filters)
+		views: ["all", "together", "solo", "years", "months"], // also "person", "year:2025", "month:3" (was called filters)
+		viewGroups: true, // "People · Years · Months" tabs before the view buttons when views come from more than one group
 		defaultView: "all", // the view to start on (was called defaultFilter)
 		viewSwitcher: "auto", // "buttons" | "compact" (one ‹ 2025 › button) | "auto" (compact when the buttons don't fit on one line)
 		rotateInterval: 30, // seconds between views; 0 = off
@@ -229,10 +230,49 @@ Module.register("MMM-WorldMapTravelCollector", {
 		return true;
 	},
 
+	/** Next or previous view. With group tabs, it stays inside the group on screen (People, Years or Months). */
 	stepView (delta) {
-		if (!this.model || this.model.views.length < 2) return false;
-		const n = this.model.views.length;
-		return this.setView((this.viewIndex + delta + n) % n, true);
+		if (!this.model) return false;
+		const list = this.groupIndices();
+		if (list.length < 2) return false;
+		const n = list.length;
+		const pos = Math.max(0, list.indexOf(this.viewIndex));
+		return this.setView(list[(pos + delta + n) % n], true);
+	},
+
+	/** "people" (all, together, solo, person), "years" or "months". */
+	viewGroup (id) {
+		if (String(id).startsWith("year:")) return "years";
+		if (String(id).startsWith("month:")) return "months";
+		return "people";
+	},
+
+	/** The groups the views come from, in order, when group tabs are on and there's more than one. */
+	groups () {
+		if (!this.model || this.config.viewGroups === false) return [];
+		const list = [];
+		for (const v of this.model.views) {
+			const g = this.viewGroup(v.id);
+			if (!list.includes(g)) list.push(g);
+		}
+		return list.length > 1 ? list : [];
+	},
+
+	/** Where a group opens: its first view with a trip already taken (not a planned-only year), else its first. */
+	groupStart (group) {
+		const views = this.model.views;
+		const inGroup = views.map((v, i) => (this.viewGroup(v.id) === group ? i : -1)).filter((i) => i >= 0);
+		const visited = inGroup.find((i) => views[i].tripIds.some((id) => this.model.trips[id] && !this.model.trips[id].planned));
+		return visited ?? inGroup[0];
+	},
+
+	/** Positions of the views in the current group (all views when there are no tabs). */
+	groupIndices () {
+		const views = this.model ? this.model.views : [];
+		const current = views[this.viewIndex];
+		if (!this.groups().length || !current) return views.map((_, i) => i);
+		const g = this.viewGroup(current.id);
+		return views.map((v, i) => (this.viewGroup(v.id) === g ? i : -1)).filter((i) => i >= 0);
 	},
 
 	setTheme (theme) {
@@ -361,14 +401,21 @@ Module.register("MMM-WorldMapTravelCollector", {
 		this.legendEl.textContent = "";
 		this.compactSwitcher = false;
 		if (!this.model || !this.config.showLegend) return;
-		const views = this.model.views;
-		if (views.length > 1) {
+		const all = this.model.views;
+		// With group tabs, only the current group's buttons show (People, Years or Months).
+		const entries = this.groupIndices().map((i) => ({ v: all[i], i }));
+		const views = entries.map((e) => e.v);
+		const groups = this.groups();
+		const tabs = () => (groups.length ? this.chipsEl.append(this.renderGroupTabs(groups)) : null);
+		if (all.length > 1) {
 			const mode = this.config.viewSwitcher;
-			if (mode !== "compact") this.renderChipButtons(views);
+			tabs();
+			if (mode !== "compact") this.renderChipButtons(entries);
 			// Many views (one per year) wrap onto more lines and squeeze the map: show one ‹ 2025 › button instead.
-			if (mode === "compact" || (mode !== "buttons" && this.chipsWrap())) {
+			if (entries.length > 1 && (mode === "compact" || (mode !== "buttons" && this.chipsWrap()))) {
 				this.chipsEl.textContent = "";
-				this.renderSwitcher(views);
+				tabs();
+				this.renderSwitcher(entries);
 				this.compactSwitcher = true;
 			}
 		} else if (view && this.colorBy() === "travelers") {
@@ -383,8 +430,30 @@ Module.register("MMM-WorldMapTravelCollector", {
 		if (hasPlanned) this.legendEl.append(legendItem("Planned", null));
 	},
 
-	renderChipButtons (views) {
-		views.forEach((v, i) => {
+	/** People · Years · Months: tapping one shows that group's views (and starts on its first). */
+	renderGroupTabs (groups) {
+		const box = el("div", "wmtc-groups");
+		box.setAttribute("role", "tablist");
+		const labels = this.config.labels || {};
+		const names = { people: this.model.travelers.length > 1 ? "People" : "All", years: "Years", months: "Months" };
+		const current = this.viewGroup(this.currentView().id);
+		for (const g of groups) {
+			const tab = el("button", g === current ? "wmtc-group wmtc-group-active" : "wmtc-group", labels[g] || names[g]);
+			tab.type = "button";
+			tab.setAttribute("role", "tab");
+			tab.setAttribute("aria-selected", String(g === current));
+			tab.addEventListener("click", (e) => {
+				e.stopPropagation();
+				if (g !== current) this.setView(this.groupStart(g), true);
+				this.pause();
+			});
+			box.append(tab);
+		}
+		return box;
+	},
+
+	renderChipButtons (entries) {
+		entries.forEach(({ v, i }) => {
 			const chip = el("button", i === this.viewIndex ? "wmtc-chip wmtc-chip-active" : "wmtc-chip");
 			chip.type = "button";
 			const color = this.viewColor(v.id);
@@ -405,12 +474,12 @@ Module.register("MMM-WorldMapTravelCollector", {
 
 	/** True when the view buttons take more than one line. */
 	chipsWrap () {
-		const chips = [...this.chipsEl.children];
+		const chips = [...this.chipsEl.querySelectorAll(".wmtc-chip")];
 		return chips.length > 1 && chips.some((c) => c.offsetTop > chips[0].offsetTop + 2);
 	},
 
 	/** One button for the current view, arrows either side, and a dot for each view. */
-	renderSwitcher (views) {
+	renderSwitcher (entries) {
 		const box = el("div", "wmtc-switcher");
 		const step = (delta, symbol, label) => {
 			const b = el("button", "wmtc-step", symbol);
@@ -423,7 +492,8 @@ Module.register("MMM-WorldMapTravelCollector", {
 			});
 			return b;
 		};
-		const v = views[this.viewIndex];
+		const v = this.model.views[this.viewIndex];
+		const pos = entries.findIndex((e) => e.i === this.viewIndex);
 		const current = el("button", "wmtc-chip wmtc-chip-active wmtc-switcher-current");
 		current.type = "button";
 		const color = this.viewColor(v.id);
@@ -439,10 +509,10 @@ Module.register("MMM-WorldMapTravelCollector", {
 			this.pause();
 		});
 		const where = el("span", "wmtc-switcher-dots");
-		if (views.length <= 20) {
-			views.forEach((_, i) => where.append(el("span", i === this.viewIndex ? "wmtc-pos wmtc-pos-active" : "wmtc-pos")));
+		if (entries.length <= 20) {
+			entries.forEach((_, n) => where.append(el("span", n === pos ? "wmtc-pos wmtc-pos-active" : "wmtc-pos")));
 		} else {
-			where.textContent = `${this.viewIndex + 1} / ${views.length}`;
+			where.textContent = `${pos + 1} / ${entries.length}`;
 		}
 		box.append(step(-1, "‹", "Previous view"), current, step(1, "›", "Next view"), where);
 		this.chipsEl.append(box);
@@ -463,8 +533,13 @@ Module.register("MMM-WorldMapTravelCollector", {
 		return this.colors.byName[name] || null;
 	},
 
+	/** "auto" follows the group on screen: people → travelers, years → year, months → month. */
 	colorBy () {
-		return ["year", "month", "season"].includes(this.config.colorBy) ? this.config.colorBy : "travelers";
+		if (["travelers", "year", "month", "season"].includes(this.config.colorBy)) return this.config.colorBy;
+		const view = this.currentView();
+		if (this.config.colorBy !== "auto" || !view) return "travelers";
+		const g = this.viewGroup(view.id);
+		return g === "years" ? "year" : g === "months" ? "month" : "travelers";
 	},
 
 	seasonColor (month) {
