@@ -141,7 +141,7 @@ describe("placeDetails", () => {
 		const d = L.placeDetails(trips, { kind: "country" });
 		expect(d.title).toBe("Portugal");
 		expect(d.facts).toEqual([
-			"4 trips · 2 cities · 8 days in total",
+			"3 trips · 2 cities · 8 days in total", // Lisbon and Porto in March 2025 are one trip
 			"First Jan 2018 · Latest Mar 2025",
 			"Next: Apr 2027 (planned)",
 			"With Alex, Sam & Jo",

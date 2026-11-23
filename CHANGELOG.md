@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Fixes from a usability walkthrough
+
+Three AI testers played a non-technical phone user, a guest at the mirror and a first-time installer. What they ran into:
+
+- Mirror:
+  - The stats line names the view its numbers are for ("Alex only: 3 countries"), and the active view button stands out more.
+  - On a portrait screen the ledger uses 2 columns, so place names fit (`ledger.columns` is now `"auto"`: 4, or 2 on a tall screen).
+  - A city's card has "See all of Japan", since small countries are hard to tap. A country's trips count each month there once, so Tokyo and Kyoto in one October are 1 trip.
+  - Tapping a place in the list opens its card; tapping the page number turns the page.
+  - The editor's address on the mirror breaks only after a "/". When phones can't reach the editor yet, the mirror shows its own address, to help with the setup.
+  - "1 trip can't be shown" instead of "1 row skipped".
+- Editor:
+  - A stray "null" at the top of the Import screen is gone.
+  - On a trip the mirror can't show, the problem is marked under its field, and "Did you mean Lisbon?" is a button.
+  - After saving a changed trip, the old search word is cleared.
+  - Undo stays up for 15 seconds, and each backup says what changed ("Before deleting Cusco, Nov 2019").
+  - Import rows that are already there start unticked, so the ticks match what Save does.
+  - Plainer words: "1 trip can't be shown on the mirror", and the PIN note speaks to whoever set up the mirror.
+- README:
+  - Every example line ends with a comma.
+  - The setups say to replace the Quick start block and keep `home`.
+  - New sections cover a blank mirror after editing config.js (`npm run config:check`), restarting without pm2, where the module sits under MagicMirror's other modules, and working out the home network from the mirror's address.
+
 ### More stats
 
 - Eight more stats to choose from in `stats`: `daysTraveled`, `nextTrip` ("Next: Tokyo in 23 days"), `lastTrip`, `farthest` (from home), `newThisYear` (countries visited for the first time this year), `mostVisited`, `longestTrip` and `usStates`. The default line is the same six as before.

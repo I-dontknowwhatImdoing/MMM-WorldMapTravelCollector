@@ -23,7 +23,7 @@ A [MagicMirror²](https://magicmirror.builders/) module that maps everywhere you
 	npm ci --omit=dev
 	```
 
-2. **Add it** to `~/MagicMirror/config/config.js`, inside `modules: [ ... ]`, with your names:
+2. **Add it** to `~/MagicMirror/config/config.js`, inside `modules: [ ... ]`: paste it just after the `[`, so the comma at its end separates it from the next module. Change the names and the home city to yours:
 
 	```javascript
 	{
@@ -32,16 +32,18 @@ A [MagicMirror²](https://magicmirror.builders/) module that maps everywhere you
 		config: {
 			travelers: [
 				{ name: "Alex", color: "#4FC3F7" },
-				{ name: "Sam", color: "#F48FB1" }
+				{ name: "Sam", color: "#F48FB1" },
 			],
-			home: { city: "Boston", country: "US" }
-		}
+			home: { city: "Boston", country: "US" },
+		},
 	},
 	```
 
+	`fullscreen_below` fills the screen with the map, behind MagicMirror's other modules. If the clock or another module sits on top of the view buttons in the top left, move it to a `bottom_` position, or use one of the [ready-made setups](#ready-made-setups) that frames the map in the middle instead.
+
 3. **Let your phone in.** MagicMirror only answers the mirror itself unless you change two settings at the top of the same file. See [Opening the editor from your phone](#opening-the-editor-from-your-phone).
 
-4. **Restart MagicMirror** (`pm2 restart MagicMirror` if you start it with pm2). The map says "Add trips from your phone" and shows a QR code.
+4. **Restart MagicMirror**: `pm2 restart MagicMirror` if you start it with pm2; otherwise stop it (Ctrl+C in its terminal) and start it the way you usually do, or restart the Pi. The map says "Add trips from your phone" and shows a QR code. If the mirror stays blank instead, see [Troubleshooting](#troubleshooting).
 
 5. **Scan the code** with your phone, on the same Wi-Fi, and add your first trip. The mirror updates within a second.
 
@@ -59,9 +61,9 @@ Then restart MagicMirror. Updates never touch your trips (`data/trips.json`, `da
 
 ## Ready-made setups
 
-Copy one into `modules: [ ... ]` and change the names. Every option is described under [Configuration](#configuration).
+Use one of these instead of the block from Quick start (replace it; don't add a second one), and change the names and home city to yours. Every line ends with a comma, so you can add more options under the last one. Every option is described under [Configuration](#configuration).
 
-**A couple, on a mirror.** Views for both of you together and each alone, and a PIN for the editor:
+**A couple, on a mirror.** Views for both of you together and each alone, the next trip and days away in the stats, and a PIN for the editor:
 
 ```javascript
 {
@@ -70,12 +72,13 @@ Copy one into `modules: [ ... ]` and change the names. Every option is described
 	config: {
 		travelers: [
 			{ name: "Alex", color: "#4FC3F7" },
-			{ name: "Sam", color: "#F48FB1" }
+			{ name: "Sam", color: "#F48FB1" },
 		],
 		home: { city: "Boston", country: "US" },
 		views: ["all", "together", "solo"],
-		editorPin: "2580"
-	}
+		stats: ["countries", "cities", "nextTrip", "daysTraveled"],
+		editorPin: "2580",
+	},
 },
 ```
 
@@ -90,12 +93,12 @@ Copy one into `modules: [ ... ]` and change the names. Every option is described
 		home: { city: "Toronto", country: "CA" },
 		colorBy: "year",
 		views: ["all", "years"],
-		fadeByAge: true
-	}
+		fadeByAge: true,
+	},
 },
 ```
 
-**A portrait mirror.** Fewer, wider ledger columns so long names fit; the trip list fills the space under the map:
+**A portrait mirror.** Shows the days of each trip in the list, which fills the space under the map:
 
 ```javascript
 {
@@ -104,11 +107,12 @@ Copy one into `modules: [ ... ]` and change the names. Every option is described
 	config: {
 		travelers: [
 			{ name: "Alex", color: "#4FC3F7" },
-			{ name: "Sam", color: "#F48FB1" }
+			{ name: "Sam", color: "#F48FB1" },
 		],
+		home: { city: "Boston", country: "US" },
 		projection: "naturalEarth",
-		ledger: { columns: 2, showDays: true }
-	}
+		ledger: { columns: 2, showDays: true },
+	},
 },
 ```
 
@@ -121,14 +125,15 @@ Copy one into `modules: [ ... ]` and change the names. Every option is described
 	config: {
 		travelers: [
 			{ name: "Alex", color: "#4FC3F7" },
-			{ name: "Sam", color: "#F48FB1" }
+			{ name: "Sam", color: "#F48FB1" },
 		],
+		home: { city: "Boston", country: "US" },
 		theme: "analog",
 		layout: "centered",
 		maxWidth: "85%",
 		maxHeight: "85%",
-		colorBy: "season"
-	}
+		colorBy: "season",
+	},
 },
 ```
 
@@ -155,11 +160,11 @@ Some options take a list, like `views` and `stats`. Write a list in square brack
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `home` | `null` | Where you live: `{ city: "Boston", country: "US" }` or `{ lat: 42.36, lon: -71.06 }`. Used for the distance stat, and to leave out places near home when importing a Timeline |
+| `home` | `null` | Where you live: `{ city: "Boston", country: "US" }` (the country as a name or code: `"Portugal"` or `"PT"`) or `{ lat: 42.36, lon: -71.06 }`. Used for the distance stat, and to leave out places near home when importing a Timeline |
 | `dataDir` | the module's `data/` folder | Folder holding `trips.json` / `trips.csv`. A relative path is relative to the module's folder |
 | `sheetUrl` | `""` | A Google Sheet to read trips from (see [Google Sheet](#google-sheet)) |
 | `sheetRefreshMinutes` | `30` | How often the sheet is checked |
-| `showProblems` | `true` | Show a small note under the ledger when some trips couldn't be shown, e.g. "2 rows skipped. Open the trip editor to see why" |
+| `showProblems` | `true` | Show a small note under the ledger when some trips couldn't be shown, e.g. "2 trips can't be shown. Open the trip editor to see why" |
 
 ### Map
 
@@ -207,7 +212,7 @@ These matter on touch screens, or with a mouse. On a mirror without touch, every
 | `detailsNotes` | `true` | Show trip notes on the details card. `false` keeps them off the mirror (guests can tap too) |
 | `detailsHint` | `true` | On touch screens, show "Tap a place for details" under the map until the first tap |
 
-You can also tap a view button to switch views, and tap the ledger to turn its page.
+You can also tap a view button to switch views, tap a place in the list under the map to see its card, and tap the page number under the list (1 / 2) to turn the page. A city's card has a "See all of …" link to the whole country.
 
 ### Stats
 
@@ -237,7 +242,7 @@ Each stat counts the trips in the view on screen: in "Together", only trips you 
 | `"longestTrip"` | Longest trip: 21 days in Japan | Days added up per country and month, so Tokyo and Kyoto in one trip count together |
 | `"usStates"` | 12/50 US states | States with a city you visited in the United States |
 
-A stat that has nothing to show yet (no planned trip, no days entered, no `home`) is left out of the line.
+A stat that can't be worked out yet (no planned trip, no days entered, no `home`) is left out of the line. Counts show 0 when there's nothing to count, e.g. "0 trips in 2026".
 
 ### Ledger
 
@@ -247,7 +252,7 @@ The list of places under the map. Set only what you want to change, e.g. `ledger
 | --- | --- | --- |
 | `enabled` | `true` | Show the ledger |
 | `rows` | `"auto"` | Rows per page. `"auto"` is 5, or more on a tall (portrait) screen when there are trips to fill the space under the map |
-| `columns` | `4` | Columns per page. On a portrait mirror, `2` or `3` leaves room for longer names |
+| `columns` | `"auto"` | Columns per page. `"auto"` is 4, or 2 on a tall (portrait) screen so place names fit; or set a number |
 | `sort` | `"newest"` | The order of the ledger, read down each column and then across: `"newest"` (the most recent trip first), `"oldest"` (your first trip first) or `"alpha"` (A to Z by city, or by country for country-only trips; repeat visits to the same place, newest first). Trips in the same month go A to Z |
 | `overflow` | `"cycle"` | When trips don't fit: `"cycle"` turns pages, `"shrink"` makes the text smaller |
 | `pageInterval` | `15` | Seconds per page, for `"cycle"` |
@@ -299,7 +304,7 @@ let config = {
 	// ...
 ```
 
-Use your own network in place of `192.168.1.0` (both times): if your phone's address is `192.168.0.23`, use `192.168.0.0`. To find the mirror's address, run `hostname -I` on it. Restart MagicMirror after the change.
+Use your own home network in place of `192.168.1.0` (both times). The mirror shows its own address on the map until phones are let in ("This mirror's address: 192.168.0.37"); change its last number to 0 and use that, here `192.168.0.0`. You can also run `hostname -I` on the mirror and use the address that starts with `192.168.` or `10.`. Restart MagicMirror after the change.
 
 This only opens the mirror to devices on your home network. Don't forward port 8080 on your router: that would put your mirror on the internet. If others use your Wi-Fi, set `editorPin` in the module's config, and the editor will ask for it once per phone. Five wrong tries lock it for a minute.
 
@@ -400,7 +405,7 @@ Colors and sizes are CSS variables, so you can restyle the module in MagicMirror
 
 **Offline.** The map and the city list are built in, so the module works without internet. A Google Sheet shows its last saved copy until the mirror is back online.
 
-**Touch screens.** Nothing needs a tap: views take turns by themselves and the ledger turns its pages. With touch, you can also tap places for details, tap a view button, and tap the ledger.
+**Touch screens.** Nothing needs a tap: views take turns by themselves and the ledger turns its pages. With touch, you can also tap places for details, tap a view button, tap a place in the list, and tap the page number to turn the page.
 
 **Backups.** Copy the module's `data/` folder somewhere safe now and then; it holds your trips and the editor's last 10 backups. The editor's **More** tab can also download everything as a spreadsheet.
 
@@ -408,13 +413,15 @@ Colors and sizes are CSS variables, so you can restyle the module in MagicMirror
 
 ## Troubleshooting
 
-**The phone shows "403" or "Forbidden".** MagicMirror only lets the mirror itself in. See [Opening the editor from your phone](#opening-the-editor-from-your-phone).
+**The mirror is blank or shows an error after editing config.js.** Usually a missing comma or bracket. Run `cd ~/MagicMirror && npm run config:check`: it names the line with the mistake. Each module's block is `{ ... },` with a comma after the closing `}`, and so is every option line inside `config: { ... }`.
+
+**The phone shows "403" or "Forbidden".** MagicMirror only lets the mirror itself in. See [Opening the editor from your phone](#opening-the-editor-from-your-phone). If you've already changed `address` and `ipWhitelist`, check that you restarted MagicMirror and that the numbers match your home network (the mirror's address with its last number replaced by 0).
 
 **The phone can't reach the page at all.** Check that the phone is on the same Wi-Fi as the mirror, and use the address the mirror shows (or run `hostname -I` on it); the port is usually 8080.
 
 **"The editor only opens at the mirror's own address".** You used a name the editor doesn't know. Use the mirror's IP address, or add the name to `editorHosts`.
 
-**The map says "N rows skipped".** Some trips couldn't be shown, often a misspelled city or a traveler who isn't in `travelers`. Open the editor: they're listed at the top of **Trips** with what's wrong, and you can fix them there.
+**The map says "2 trips can't be shown".** Some trips couldn't be shown, often a misspelled city or a traveler who isn't in `travelers`. Open the editor: they're listed at the top of **Trips** with what's wrong, and you can fix them there.
 
 **A city isn't found.** The editor suggests close spellings. Very small places may not be in the list (it has places with 1,000 or more people): pick the nearest town, or add `lat` and `lon`.
 
