@@ -1,0 +1,222 @@
+{
+ "lisboa": [
+  "Lisbon",
+  "PT"
+ ],
+ "porto": [
+  "Porto",
+  "PT"
+ ],
+ "oporto": [
+  "Porto",
+  "PT"
+ ],
+ "roma": [
+  "Rome",
+  "IT"
+ ],
+ "firenze": [
+  "Florence",
+  "IT"
+ ],
+ "venezia": [
+  "Venice",
+  "IT"
+ ],
+ "milano": [
+  "Milan",
+  "IT"
+ ],
+ "napoli": [
+  "Naples",
+  "IT"
+ ],
+ "torino": [
+  "Turin",
+  "IT"
+ ],
+ "genova": [
+  "Genoa",
+  "IT"
+ ],
+ "munchen": [
+  "Munich",
+  "DE"
+ ],
+ "cologne": [
+  "Köln",
+  "DE"
+ ],
+ "nuremberg": [
+  "Nürnberg",
+  "DE"
+ ],
+ "wien": [
+  "Vienna",
+  "AT"
+ ],
+ "praha": [
+  "Prague",
+  "CZ"
+ ],
+ "warszawa": [
+  "Warsaw",
+  "PL"
+ ],
+ "krakow": [
+  "Kraków",
+  "PL"
+ ],
+ "cracow": [
+  "Kraków",
+  "PL"
+ ],
+ "bucuresti": [
+  "Bucharest",
+  "RO"
+ ],
+ "beograd": [
+  "Belgrade",
+  "RS"
+ ],
+ "athina": [
+  "Athens",
+  "GR"
+ ],
+ "geneva": [
+  "Genève",
+  "CH"
+ ],
+ "zurich": [
+  "Zürich",
+  "CH"
+ ],
+ "bruxelles": [
+  "Brussels",
+  "BE"
+ ],
+ "brussel": [
+  "Brussels",
+  "BE"
+ ],
+ "antwerpen": [
+  "Antwerpen",
+  "BE"
+ ],
+ "antwerp": [
+  "Antwerpen",
+  "BE"
+ ],
+ "brugge": [
+  "Brugge",
+  "BE"
+ ],
+ "bruges": [
+  "Brugge",
+  "BE"
+ ],
+ "gent": [
+  "Gent",
+  "BE"
+ ],
+ "ghent": [
+  "Gent",
+  "BE"
+ ],
+ "den haag": [
+  "The Hague",
+  "NL"
+ ],
+ "kobenhavn": [
+  "Copenhagen",
+  "DK"
+ ],
+ "gothenburg": [
+  "Göteborg",
+  "SE"
+ ],
+ "sevilla": [
+  "Sevilla",
+  "ES"
+ ],
+ "seville": [
+  "Sevilla",
+  "ES"
+ ],
+ "moskva": [
+  "Moscow",
+  "RU"
+ ],
+ "kiev": [
+  "Kyiv",
+  "UA"
+ ],
+ "peking": [
+  "Beijing",
+  "CN"
+ ],
+ "bombay": [
+  "Mumbai",
+  "IN"
+ ],
+ "calcutta": [
+  "Kolkata",
+  "IN"
+ ],
+ "madras": [
+  "Chennai",
+  "IN"
+ ],
+ "bengaluru": [
+  "Bengaluru",
+  "IN"
+ ],
+ "bangalore": [
+  "Bengaluru",
+  "IN"
+ ],
+ "saigon": [
+  "Ho Chi Minh City",
+  "VN"
+ ],
+ "rangoon": [
+  "Yangon",
+  "MM"
+ ],
+ "ciudad de mexico": [
+  "Mexico City",
+  "MX"
+ ],
+ "cdmx": [
+  "Mexico City",
+  "MX"
+ ],
+ "marrakech": [
+  "Marrakesh",
+  "MA"
+ ],
+ "nyc": [
+  "New York City",
+  "US"
+ ],
+ "new york": [
+  "New York City",
+  "US"
+ ],
+ "la": [
+  "Los Angeles",
+  "US"
+ ],
+ "dc": [
+  "Washington, D.C.",
+  "US"
+ ],
+ "washington dc": [
+  "Washington, D.C.",
+  "US"
+ ],
+ "washington": [
+  "Washington, D.C.",
+  "US"
+ ]
+}

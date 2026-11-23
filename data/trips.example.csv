@@ -1,0 +1,12 @@
+city,country,date,days,travelers,lat,lon,note
+Lisbon,Portugal,2025-03,5,Alex; Sam,,,Anniversary
+Porto,Portugal,2025-03,3,Alex; Sam,,,
+Kyoto,Japan,2024-10,4,Alex; Sam,,,
+Tokyo,JP,2024-10,6,Alex; Sam,,,
+Chicago,United States,2024-06,2,Alex,,,Work trip
+Reykjavík,Iceland,2023-08,7,Sam,,,
+,Iceland,2023-08,,Sam,,,Ring Road
+Mexico City,Mexico,2023-01,4,Alex; Sam,,,
+Paris,France,2022-05,4,Alex; Sam,,,
+Paris,United States,2021-09,1,Alex,33.6609,-95.5555,"Paris, Texas"
+Cape Town,South Africa,2027-04,10,Alex; Sam,,,Planned
