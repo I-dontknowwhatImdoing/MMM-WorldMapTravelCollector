@@ -70,6 +70,39 @@
 		return m ? `${months[Number(m[2]) - 1]} ${m[1]}` : ym || "No date";
 	}
 
+	/** The last day of a trip with a start day: start + days, counting the start as day one. */
+	function endOf (start, days) {
+		const d = new Date(`${start}T12:00:00Z`);
+		d.setUTCDate(d.getUTCDate() + Math.max(1, Number(days) || 1) - 1);
+		return d.toISOString().slice(0, 10);
+	}
+
+	/** "Mar 2025", or with a start day "14–18 Mar 2025" / "28 Mar – 1 Apr 2025". */
+	function whenText (t) {
+		if (!t.start || !/^\d{4}-\d{2}-\d{2}$/.test(t.start)) return formatMonth(t.date);
+		const end = endOf(t.start, t.days);
+		const [y1, m1, d1] = t.start.split("-").map(Number);
+		const [y2, m2, d2] = end.split("-").map(Number);
+		if (y1 === y2 && m1 === m2) return `${d1 === d2 ? d1 : `${d1}–${d2}`} ${months[m1 - 1]} ${y1}`;
+		if (y1 === y2) return `${d1} ${months[m1 - 1]} – ${d2} ${months[m2 - 1]} ${y1}`;
+		return `${d1} ${months[m1 - 1]} ${y1} – ${d2} ${months[m2 - 1]} ${y2}`;
+	}
+
+	/** An optional day (1–31) to go with a month picker. */
+	function dayPicker (start, label) {
+		const day = /^\d{4}-\d{2}-(\d{2})$/.exec(start || "");
+		return h("select", { "aria-label": `${label}: day (optional)` },
+			h("option", { value: "", text: "Day" }),
+			Array.from({ length: 31 }, (_, i) => {
+				const v = String(i + 1).padStart(2, "0");
+				return h("option", { value: v, text: String(i + 1), selected: Boolean(day && day[1] === v) });
+			}));
+	}
+
+	function startFrom (date, day) {
+		return day && /^\d{4}-\d{2}$/.test(date || "") ? `${date}-${day}` : "";
+	}
+
 	function colorOf (name) {
 		const t = S.data.travelers.find((x) => x.name === name);
 		return (t && t.color) || "#8aa0b0";
@@ -224,7 +257,7 @@
 			out.push(h("h3", { text: year }));
 			out.push(h("div", { class: "list" }, list.map((t) => {
 				const planned = t.date > S.data.currentMonth;
-				const sub = [formatMonth(t.date), t.days ? `${t.days} day${t.days === 1 ? "" : "s"}` : "", t.travelers.join(" & ")].filter(Boolean).join(" · ");
+				const sub = [whenText(t), t.days ? `${t.days} day${t.days === 1 ? "" : "s"}` : "", t.travelers.join(" & ")].filter(Boolean).join(" · ");
 				return h(locked ? "div" : "button", { class: locked ? "row locked" : "row", type: locked ? null : "button", onclick: locked ? null : () => editTrip(t) },
 					dots(t.travelers),
 					h("span", { class: "row-main" },
@@ -335,6 +368,7 @@
 			city: t.city || "",
 			country: t.country ? countryName(countryCode(t.country)) : "",
 			date: t.date || "",
+			start: t.start || "",
 			days: t.days ? String(t.days) : "",
 			travelers: Array.isArray(t.travelers) ? [...t.travelers] : String(t.travelers || "").split(/[;,&]/).map((s) => s.trim()).filter(Boolean),
 			note: t.note || "",
@@ -364,10 +398,16 @@
 			country.value = v.country = c.countryName;
 			keep();
 		});
+		const day = dayPicker(v.start, "When");
 		const when = monthPicker(v.date, (val) => {
 			v.date = val;
+			v.start = startFrom(v.date, day.value);
 			keep();
 		}, "When");
+		day.addEventListener("change", () => {
+			v.start = startFrom(v.date, day.value);
+			keep();
+		});
 		const days = h("input", { type: "number", inputmode: "numeric", min: "1", max: "3650", value: v.days, placeholder: "Optional" });
 		days.addEventListener("input", () => {
 			v.days = days.value;
@@ -394,7 +434,7 @@
 		const form = h("form", { class: "card", novalidate: true, onsubmit: async (e) => {
 			e.preventDefault();
 			showErrors([]);
-			const body = { city: v.city, country: countryCode(v.country), date: v.date, days: v.days, travelers: v.travelers, note: v.note, lat: v.lat, lon: v.lon };
+			const body = { city: v.city, country: countryCode(v.country), date: v.date, start: v.start, days: v.days, travelers: v.travelers, note: v.note, lat: v.lat, lon: v.lon };
 			save.disabled = true;
 			try {
 				const r = editing ? await api("PUT", `/trips/${encodeURIComponent(editing.id)}`, body) : await api("POST", "/trips", body);
@@ -416,7 +456,8 @@
 		countries,
 		h("label", { class: "field" }, h("span", { text: "Country" }), country),
 		h("label", { class: "field" }, h("span", { text: "City" }), city, suggest, h("small", { class: "hint", text: "Leave empty for a trip around the whole country, like a road trip." })),
-		h("div", { class: "field" }, h("span", { class: "label", text: "When" }), when.el, h("small", { class: "hint", text: "A month after this one shows as a planned trip." })),
+		h("div", { class: "field" }, h("span", { class: "label", text: "When" }), h("div", { class: "when" }, day, when.month, when.year),
+			h("small", { class: "hint", text: "The day is optional. With it and the days there, the map knows exactly when the trip ended. A month after this one shows as a planned trip." })),
 		h("div", { class: "field" }, h("span", { class: "label", text: "Who went" }), travelerPills(v.travelers, (list) => {
 			v.travelers = list;
 			keep();
@@ -529,7 +570,7 @@
 	}
 
 	function draftBody (d) {
-		return { city: d.city, country: countryCode(d.country), date: d.date, days: d.days, travelers: d.travelers, lat: d.lat, lon: d.lon, note: d.note };
+		return { city: d.city, country: countryCode(d.country), date: d.date, start: d.start || "", days: d.days, travelers: d.travelers, lat: d.lat, lon: d.lon, note: d.note };
 	}
 
 	let checkTimer;
@@ -687,7 +728,11 @@
 			h("div", { class: "field" }, h("span", { class: "label", text: "Month" }), bulkDate.el),
 			h("div", { class: "actions" }, h("button", { class: "btn", type: "button", text: "Set month", onclick: () => {
 				if (!bulkDate.month.value || !bulkDate.year.value) return toast("Pick a month and a year first", true);
-				for (const d of r.drafts) if (d.include) d.date = `${bulkDate.year.value}-${bulkDate.month.value}`;
+				for (const d of r.drafts) {
+					if (!d.include) continue;
+					d.date = `${bulkDate.year.value}-${bulkDate.month.value}`;
+					d.start = ""; // the old day belonged to the old month
+				}
 				renderReview();
 				check();
 			} })),
@@ -731,10 +776,16 @@
 			d.country = country.value;
 			changed();
 		});
+		const day = dayPicker(d.start, "Start");
 		const when = monthPicker(d.date, (val) => {
 			d.date = val;
+			d.start = startFrom(d.date, day.value);
 			changed();
 		}, "Month");
+		day.addEventListener("change", () => {
+			d.start = startFrom(d.date, day.value);
+			changed();
+		});
 		const days = h("input", { type: "number", min: "1", value: d.days, placeholder: "Days", "aria-label": "Days" });
 		days.addEventListener("input", () => {
 			d.days = days.value;
@@ -748,7 +799,7 @@
 					d.hours ? h("div", { class: "row-sub", text: `${d.hours} hours over ${d.days} day${d.days === "1" ? "" : "s"}` }) : null)),
 			h("div", { class: "draft-body" },
 				h("div", { class: "pair" }, city, country),
-				h("div", { class: "pair-3" }, when.month, when.year, days),
+				h("div", { class: "pair-4" }, day, when.month, when.year, days),
 				travelerPills(d.travelers, (list) => {
 					d.travelers = list;
 					changed();

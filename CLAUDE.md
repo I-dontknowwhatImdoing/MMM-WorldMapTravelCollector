@@ -17,7 +17,7 @@ Later (v2+): timeline view (Jan–Dec × years), zoom/focus on a region or city,
 
 ## Decisions already made
 
-- Trip fields: city (optional), country (required, stored as ISO alpha-2), date `YYYY-MM` (required), days (optional), travelers (required, names from config), lat/lon (optional override), note. One row per place per trip.
+- Trip fields: city (optional), country (required, stored as ISO alpha-2), date `YYYY-MM` (required; filled from start when missing), start `YYYY-MM-DD` (optional; a full date in `date` sets it; end = start + days - 1, see `endDay`), days (optional), travelers (required, names from config), lat/lon (optional override), note. One row per place per trip.
 - "Together" = every configured traveler went. "Solo" = only that person. "person:X" = every trip X was on. Planned = month after the current month.
 - No layover concept: entries are places actually visited.
 - Offline geocoding: GeoNames cities with 1,000+ people via `all-the-cities`, plus hand-kept aliases in `scripts/city-aliases.source.json`. Rebuild `geo/` with `npm run build:geo`.
