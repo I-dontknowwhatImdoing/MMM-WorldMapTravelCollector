@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Map: fade older trips
+
+- New `fadeByAge` option: countries and pins you visited long ago are drawn fainter, and recent ones in full color. `fadeStrength` sets how much (0 to 0.95) and `fadeYears` how quickly. Off by default; planned trips never fade.
+
 ### Milestone 4: Trip editor and imports
 
 - Trip editor for your phone, served by the mirror at `http://<mirror>:8080/MMM-WorldMapTravelCollector/`: list and search trips, add with city autocomplete, edit, delete. Works in light and dark mode.

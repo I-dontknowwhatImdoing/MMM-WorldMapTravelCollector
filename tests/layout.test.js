@@ -79,3 +79,27 @@ describe("palette and colors", () => {
 		expect(L.clamp(-1, 0, 3)).toBe(0);
 	});
 });
+
+describe("fadeFactor", () => {
+	const on = { enabled: true, strength: 0.6, years: 10 };
+	test("full color this month and for planned trips; off means no fading", () => {
+		expect(L.fadeFactor("2026-11", "2026-11", on)).toBe(1);
+		expect(L.fadeFactor("2027-04", "2026-11", on)).toBe(1);
+		expect(L.fadeFactor("2006-01", "2026-11", { ...on, enabled: false })).toBe(1);
+		expect(L.fadeFactor("2006-01", "2026-11", null)).toBe(1);
+		expect(L.fadeFactor(null, "2026-11", on)).toBe(1);
+	});
+	test("fades in a straight line, down to 1 - strength after fadeYears", () => {
+		expect(L.fadeFactor("2021-11", "2026-11", on)).toBe(0.7);
+		expect(L.fadeFactor("2016-11", "2026-11", on)).toBe(0.4);
+		expect(L.fadeFactor("1990-01", "2026-11", on)).toBe(0.4);
+		expect(L.fadeFactor("2025-11", "2026-11", { enabled: true, strength: 1, years: 1 })).toBe(0.05);
+		expect(L.fadeFactor("2021-11", "2026-11", { enabled: true, strength: -1 })).toBe(1);
+	});
+	test("missing or odd settings use the defaults (0.6 over 10 years)", () => {
+		expect(L.fadeFactor("2016-11", "2026-11", { enabled: true })).toBe(0.4);
+		expect(L.fadeFactor("2016-11", "2026-11", { enabled: true, strength: "lots", years: 0 })).toBe(0.4);
+		expect(L.monthIndex("2026-01")).toBe(2026 * 12);
+		expect(L.monthIndex("soon")).toBeNaN();
+	});
+});

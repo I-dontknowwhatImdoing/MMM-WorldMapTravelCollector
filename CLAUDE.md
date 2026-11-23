@@ -10,7 +10,7 @@ A MagicMirror² module: a world map of trips (countries shaded, cities pinned), 
 1. Foundation: data model, offline geocoding, filters, stats, CSV import. **Merged (#1).**
 2. The map: front end, responsive layout, Digital theme, node_helper. **Merged (#2).**
 3. Ledger, stats line, view chips/rotation/notifications/touch, Analog theme. **Merged (#3).**
-4. Web editor + imports: phone-friendly editor served by MagicMirror (`/MMM-WorldMapTravelCollector/`), add/edit/delete with city autocomplete; CSV, Google Takeout saved places (CSV/GeoJSON), My Maps KML/KMZ, and Google Maps Timeline (phone `Timeline.json` and old Takeout monthly files) importers with a review step; Google Sheet source (publish-to-web CSV, `sheetRefreshMinutes`); optional `editorPin`; backups. Merge rule: same city+country+month combine travelers, so two people's imports become "together". **In review.**
+4. Web editor + imports: phone-friendly editor served by MagicMirror (`/MMM-WorldMapTravelCollector/`), add/edit/delete with city autocomplete; CSV, Google Takeout saved places (CSV/GeoJSON), My Maps KML/KMZ, and Google Maps Timeline (phone `Timeline.json` and old Takeout monthly files) importers with a review step; Google Sheet source (publish-to-web CSV, `sheetRefreshMinutes`); optional `editorPin`; backups. Merge rule: same city+country+month combine travelers, so two people's imports become "together". **Merged (#4).**
 5. Release: README polish, screenshots, final Pi 4 check, submit to the module list.
 
 Later (v2+): timeline view (Jan–Dec × years), zoom/focus on a region or city, specific spots, photos, a "days traveled" stat.
@@ -28,6 +28,7 @@ Later (v2+): timeline view (Jan–Dec × years), zoom/focus on a region or city,
 - Editing (`lib/editing.js`) never drops unreadable rows: they stay at the end of trips.json with ids `row-N` (N = position in the file, so refetch after a save). Saved trips go through `storedTrip`, which drops coordinates equal to the city lookup.
 - Importers: `lib/importers.js` detects the file type (zip/KMZ, KML, GeoJSON, Timeline JSON, CSV) and routes to `import-places.js` / `import-timeline.js`. Uploads use a tiny framing (`packFiles`/`unpackFiles`) instead of multipart. Reverse geocoding is `geocoder.nearest`: population / (km + 2)² within 30 km, else the closest place within `maxKm`.
 - Google Sheet: `lib/sheet.js`, cached in `data/sheet-cache.csv`; read-only in the editor.
+- Fade by age (`fadeByAge`, `fadeStrength`, `fadeYears`; off by default): the view model gives each country and pin `last` (most recent visited month in that view) and the model `currentMonth`; `WMTCLayout.fadeFactor` turns that into `--wmtc-fade`, which scales fill/stroke opacity in CSS. Planned trips never fade.
 
 ## Working in this repo
 

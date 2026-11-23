@@ -30,6 +30,17 @@ describe("buildViewModel", () => {
 	];
 	const model = buildViewModel(trips, { travelerNames: names, now: NOW, countries: geo.countries, home: { lat: 42.36, lon: -71.06 } });
 
+	test("most recent visit per country and pin, for fading old trips", () => {
+		const all = model.views[0];
+		expect(model.currentMonth).toBe("2026-11");
+		expect(all.countries.PT.last).toBe("2025-03");
+		expect(all.countries.ZA).toMatchObject({ state: "planned", last: null });
+		expect(all.pins.find((p) => p.city === "Lisbon").last).toBe("2025-03");
+		expect(all.pins.find((p) => p.city === "Cape Town").last).toBeNull();
+		// In Alex's solo view, Lisbon was last visited (alone) in 2019.
+		expect(model.views.find((v) => v.id === "solo:Alex").countries.PT.last).toBe("2019-06");
+	});
+
 	test("default views and labels", () => {
 		expect(model.views.map((v) => [v.id, v.label])).toEqual([
 			["all", "All"],
@@ -50,10 +61,10 @@ describe("buildViewModel", () => {
 	test("country shading: visited beats planned, colors by group", () => {
 		const all = model.views[0];
 		expect(all.countries).toEqual({
-			PT: { state: "visited", group: "mixed" },
-			IS: { state: "visited", group: "Sam" },
-			US: { state: "visited", group: "Alex" },
-			ZA: { state: "planned", group: "together" }
+			PT: { state: "visited", group: "mixed", last: "2025-03" },
+			IS: { state: "visited", group: "Sam", last: "2023-08" },
+			US: { state: "visited", group: "Alex", last: "2024-06" },
+			ZA: { state: "planned", group: "together", last: null }
 		});
 	});
 
