@@ -35,11 +35,11 @@ describe("bundled geo data", () => {
 	});
 
 	test("city rows are well formed and sorted by population", () => {
-		expect(cities.fields).toEqual(["name", "country", "lat", "lon", "population"]);
+		expect(cities.fields).toEqual(["name", "country", "lat", "lon", "population", "region?"]);
 		expect(cities.rows.length).toBeGreaterThan(100000);
 		let prev = Infinity;
-		for (const [name, country, lat, lon, pop] of cities.rows) {
-			if (!name || !meta[country] || !(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180) || !(pop <= prev)) {
+		for (const [name, country, lat, lon, pop, region] of cities.rows) {
+			if (!name || !meta[country] || !(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180) || !(pop <= prev) || !(region === undefined || /^[A-Z]{2,3}$/.test(region))) {
 				throw new Error(`Bad city row: ${name} ${country} ${lat} ${lon} ${pop}`);
 			}
 			prev = pop;

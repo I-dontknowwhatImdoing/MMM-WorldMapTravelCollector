@@ -87,7 +87,11 @@ function buildCities (meta) {
 	for (const c of all) {
 		if (!meta[c.country]) continue;
 		const [lon, lat] = c.loc.coordinates;
-		rows.push([c.name, c.country, Math.round(lat * 1e4) / 1e4, Math.round(lon * 1e4) / 1e4, c.population]);
+		const row = [c.name, c.country, Math.round(lat * 1e4) / 1e4, Math.round(lon * 1e4) / 1e4, c.population];
+		// Region, only where GeoNames uses readable letters (US states "TX", UK nations "ENG"): it tells
+		// apart same-name towns in the editor's city suggestions. Numeric codes mean nothing to people.
+		if (/^[A-Z]{2,3}$/.test(c.adminCode || "")) row.push(c.adminCode);
+		rows.push(row);
 	}
 	rows.sort((a, b) => b[4] - a[4]);
 	return rows;
@@ -102,7 +106,7 @@ function buildAliases (cityRows) {
 		if (alias.startsWith("_")) continue;
 		const [name, country] = target;
 		if (!known.has(`${normalizeName(name)}|${country}`)) missing.push(`${alias} -> ${name}, ${country}`);
-		out[normalizeName(alias)] = [name, country];
+		out[normalizeName(alias)] = [name, country, alias]; // the alias as people write it, for suggestions
 	}
 	return { aliases: out, missing };
 }
@@ -121,7 +125,7 @@ function main () {
 	fs.writeFileSync(path.join(GEO_DIR, "countries-meta.json"), JSON.stringify(meta));
 	fs.writeFileSync(path.join(GEO_DIR, "countries-50m.json"), JSON.stringify(topo));
 	fs.writeFileSync(path.join(GEO_DIR, "city-aliases.json"), JSON.stringify(aliases, null, 1));
-	const payload = JSON.stringify({ fields: ["name", "country", "lat", "lon", "population"], rows: cities });
+	const payload = JSON.stringify({ fields: ["name", "country", "lat", "lon", "population", "region?"], rows: cities });
 	fs.writeFileSync(path.join(GEO_DIR, "cities.json.gz"), zlib.gzipSync(payload, { level: 9 }));
 
 	console.log(`countries: ${Object.keys(meta).length}, shapes: ${topo.objects.countries.geometries.length} (${unassigned} without a country), cities: ${cities.length}, aliases: ${Object.keys(aliases).length}`);

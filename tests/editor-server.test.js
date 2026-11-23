@@ -210,7 +210,7 @@ describe("API", () => {
 		const list = (await call("GET", "/api/backups")).body.backups;
 		expect(list).toHaveLength(1);
 		const restored = await call("POST", "/api/backups/restore", { name: list[0].name });
-		expect(restored.body).toEqual({ restored: list[0].name, trips: 1 });
+		expect(restored.body).toEqual({ restored: list[0].name, trips: 1, unreadable: 0 });
 		expect((await call("POST", "/api/backups/restore", { name: "../../etc/passwd" })).status).toBe(404);
 		expect((await call("POST", "/api/backups/restore", {})).status).toBe(404);
 	});
@@ -222,7 +222,7 @@ describe("API", () => {
 		expect(res.headers.get("content-disposition")).toBe("attachment; filename=\"trips-2026-11-23.csv\"");
 		const lines = res.body.trim().split("\n");
 		expect(lines[0]).toBe("id,city,country,date,start,days,travelers,lat,lon,note");
-		expect(lines.slice(1).map((l) => l.split(",").slice(1, 4).join(","))).toEqual(["Lisbon,PT,2025-03", "Rome,IT,2022-09"]);
+		expect(lines.slice(1).map((l) => l.split(",").slice(1, 4).join(","))).toEqual(["Lisbon,Portugal,2025-03", "Rome,Italy,2022-09"]);
 		expect(lines[1]).toContain("Alex; Sam");
 	});
 
@@ -265,11 +265,16 @@ describe("access", () => {
 		expect(await call("GET", "/api/state")).toMatchObject({ status: 401, body: { error: "Enter the editor PIN", pinRequired: true } });
 		expect((await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "" })).status).toBe(401);
 		expect((await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "4321" })).body.pinRequired).toBe(true);
-		for (let i = 0; i < 4; i++) expect((await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "0000" })).body.error).toBe("Wrong PIN");
-		expect((await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "00000" })).status).toBe(401);
+		for (let i = 0; i < 4; i++) {
+			const wrong = await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "0000" });
+			expect(wrong.body).toMatchObject({ error: "Wrong PIN", triesLeft: 4 - i });
+		}
+		const fifth = await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "00000" });
+		expect(fifth).toMatchObject({ status: 429, body: { pinRequired: true, retryAfter: 60 } });
 		const locked = await call("GET", "/api/state", undefined, { "X-WMTC-Pin": "4321" });
 		expect(locked.status).toBe(429);
 		expect(locked.body.error).toMatch(/Try again in \d+ seconds/);
+		expect(locked.body.retryAfter).toBeGreaterThan(0);
 	});
 
 	test("unexpected errors are reported, not crashes", async () => {

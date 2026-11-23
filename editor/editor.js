@@ -44,13 +44,43 @@
 	}
 
 	let toastTimer;
-	function toast (message, bad) {
+	/**
+	 * A short message at the bottom of the screen. `action` adds a button, e.g. { label: "Undo", run }.
+	 */
+	function toast (message, bad, action) {
 		const t = document.getElementById("toast");
-		t.textContent = message;
+		t.replaceChildren(h("span", { text: message }));
+		if (action) {
+			t.append(h("button", { class: "toast-action", type: "button", text: action.label, onclick: () => {
+				t.hidden = true;
+				action.run();
+			} }));
+		}
 		t.className = bad ? "toast bad" : "toast";
 		t.hidden = false;
 		clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => (t.hidden = true), bad ? 6000 : 3500);
+		toastTimer = setTimeout(() => (t.hidden = true), action ? 6000 : bad ? 6000 : 3500);
+	}
+
+	/**
+	 * Which form field an error from the mirror is about, so it can be shown next to that field.
+	 * @returns {"country"|"city"|"when"|"who"|"days"|"spot"|null}
+	 */
+	function fieldOf (message) {
+		const m = String(message).toLowerCase();
+		if (/country/.test(m) && !/unknown city/.test(m)) return "country";
+		if (/city/.test(m)) return "city";
+		if (/date|month|has no \d|could be/.test(m)) return "when";
+		if (/traveler/.test(m)) return "who";
+		if (/^days/.test(m)) return "days";
+		if (/latitude|longitude/.test(m)) return "spot";
+		return null;
+	}
+
+	/** "Did you mean Lisbon, Linda-a-Velha?" → ["Lisbon", "Linda-a-Velha"] */
+	function suggestionsIn (message) {
+		const m = /Did you mean (.+)\?$/.exec(String(message));
+		return m ? m[1].split(", ").map((s) => s.trim()).filter(Boolean) : [];
 	}
 
 	function countryName (code) {
@@ -136,8 +166,8 @@
 		}
 		if (opts.raw && res.ok) return res;
 		const data = await res.json().catch(() => ({}));
-		if (res.status === 401 && data.pinRequired) {
-			showPin(data.error);
+		if ((res.status === 401 || res.status === 429) && data.pinRequired) {
+			showPin(data, Boolean(pin));
 			throw Object.assign(new Error(data.error), { quiet: true });
 		}
 		if (!res.ok) throw Object.assign(new Error(data.error || (data.errors || []).join(". ") || `Error ${res.status}`), { status: res.status, errors: data.errors });
@@ -152,26 +182,60 @@
 		document.getElementById("summary").textContent = `${n} trip${n === 1 ? "" : "s"} · ${countries} countr${countries === 1 ? "y" : "ies"}`;
 	}
 
-	function showPin (message) {
+	let pinTyped = false;
+	let lockTimer;
+	/**
+	 * Ask for the PIN. `data` is the mirror's answer: a wrong PIN says how many tries are left, and after
+	 * five wrong tries the mirror waits a minute (`retryAfter`). `hadPin` = this request sent a PIN.
+	 */
+	function showPin (data, hadPin) {
 		document.getElementById("tabs").hidden = true;
+		clearInterval(lockTimer);
+		const typed = pinTyped;
+		pinTyped = false;
+		// A saved PIN that stopped working: forget it, so it doesn't use up tries on every page load.
+		if (hadPin) storage("wmtc-pin", null);
 		const input = h("input", { type: "password", inputmode: "numeric", autocomplete: "current-password", "aria-label": "PIN" });
+		const button = h("button", { class: "btn primary", type: "submit", text: "Open editor" });
+		const status = h("p", { class: "status bad", role: "alert" });
+		if (data.retryAfter) {
+			let left = data.retryAfter;
+			const tick = () => {
+				status.textContent = `Too many wrong PINs. Try again in ${left} second${left === 1 ? "" : "s"}.`;
+				input.disabled = button.disabled = left > 0;
+				if (left <= 0) {
+					clearInterval(lockTimer);
+					status.textContent = "You can try again now.";
+					input.focus();
+				}
+				left--;
+			};
+			tick();
+			lockTimer = setInterval(tick, 1000);
+		} else if (data.error === "Wrong PIN" && !typed) {
+			status.textContent = "The PIN saved on this phone no longer works. It may have been changed on the mirror: enter the current one.";
+		} else if (data.error === "Wrong PIN") {
+			status.textContent = `That's not the PIN.${data.triesLeft ? ` ${data.triesLeft} ${data.triesLeft === 1 ? "try" : "tries"} left before a one-minute wait.` : ""}`;
+		} else status.hidden = true;
 		const form = h("form", { class: "card", onsubmit: async (e) => {
 			e.preventDefault();
 			storage("wmtc-pin", input.value);
+			pinTyped = true;
 			try {
 				await reload();
-				render();
+				pinTyped = false;
+				setTab(S.tab, { replace: true });
 			} catch (err) {
 				if (!err.quiet) failed(err);
 			}
 		} },
 		h("h2", { text: "Enter the editor PIN" }),
 		h("p", { class: "muted", text: "It's the editorPin from the mirror's config. This phone will remember it." }),
-		message && message !== "Enter the editor PIN" ? h("p", { class: "status bad", text: message }) : null,
-		h("label", { class: "field" }, input),
-		h("button", { class: "btn primary", type: "submit", text: "Open editor" }));
+		status,
+		h("label", { class: "field" }, h("span", { text: "PIN" }), input),
+		button);
 		main.replaceChildren(form);
-		input.focus();
+		if (!input.disabled) input.focus();
 	}
 
 	function failed (err) {
@@ -181,13 +245,50 @@
 
 	/* ---------- tabs ---------- */
 
-	function setTab (tab) {
+	/**
+	 * Show a screen. Each one gets an entry in the phone's history, so the Back button steps back
+	 * through the editor instead of leaving it. `replace` swaps the current entry (after a save).
+	 */
+	function setTab (tab, opts = {}) {
 		S.tab = tab;
-		for (const b of document.querySelectorAll(".tabs button")) b.classList.toggle("active", b.dataset.tab === tab);
+		for (const b of document.querySelectorAll(".tabs button")) {
+			b.classList.toggle("active", b.dataset.tab === tab);
+			if (b.dataset.tab === tab) b.setAttribute("aria-current", "page");
+			else b.removeAttribute("aria-current");
+		}
 		document.getElementById("title").textContent = { trips: "Trips", add: S.editing ? "Edit trip" : "Add a trip", import: "Import", more: "More" }[tab];
+		if (opts.history !== false) {
+			const entry = { tab, editing: S.editing ? S.editing.id : null };
+			try {
+				if (opts.replace) history.replaceState(entry, "");
+				else history.pushState(entry, "");
+			} catch {
+				// History isn't available in every embedded browser; the tabs still work.
+			}
+		}
 		render();
 		window.scrollTo(0, 0);
 	}
+
+	/** An import being reviewed that hasn't been saved: leaving it loses the review. */
+	function importInProgress () {
+		return S.tab === "import" && S.imp && S.imp.result && !S.imp.saved;
+	}
+
+	window.addEventListener("popstate", (e) => {
+		const entry = e.state || { tab: "trips" };
+		if (importInProgress() && entry.tab !== "import" && !confirm("Leave this import? Nothing has been saved yet.")) {
+			history.pushState({ tab: "import", editing: null }, "");
+			return;
+		}
+		if (entry.tab === "add" && entry.editing) {
+			S.editing = S.data && (S.data.trips.find((t) => t.id === entry.editing) || null);
+			if (!S.editing) entry.tab = "trips";
+		} else if (entry.tab === "add") {
+			S.editing = null;
+		}
+		setTab(entry.tab, { history: false });
+	});
 
 	function render () {
 		if (!S.data) return;
@@ -207,6 +308,20 @@
 			return !q || [t.city, countryName(t.country), t.country, t.note, t.date, formatMonth(t.date), whenText(t), ...t.travelers].join(" ").toLowerCase().includes(q);
 		};
 
+		if (d.sheet && d.sheet.error) {
+			out.push(h("div", { class: "notice bad" }, h("strong", { text: "Google Sheet: " }), d.sheet.error, ". ",
+				h("button", { type: "button", class: "btn link inline", text: "Check it now", onclick: () => setTab("more") })));
+		}
+		if (!d.pinRequired && !storage("wmtc-pin-note-seen")) {
+			const note = h("div", { class: "notice" },
+				"Anyone on your Wi-Fi can open this page and change your trips. To ask for a PIN, add ",
+				h("code", { text: "editorPin: \"1234\"" }), " (your own number) to the module in the mirror's config. ",
+				h("button", { type: "button", class: "btn link inline", text: "Got it", onclick: () => {
+					storage("wmtc-pin-note-seen", "1");
+					note.remove();
+				} }));
+			out.push(note);
+		}
 		if (d.broken.length) {
 			out.push(h("div", { class: "notice" },
 				h("strong", { text: `${d.broken.length} row${d.broken.length === 1 ? "" : "s"} in trips.json can't be shown on the mirror.` }),
@@ -233,21 +348,43 @@
 
 		const groups = h("div", { class: "trip-groups" }, tripGroups(d.trips.filter(matches), false));
 		out.push(groups);
+		const readOnlyCount = d.readOnly.reduce((n, s) => n + s.trips.length, 0);
 		if (!d.trips.length) {
 			out.push(h("div", { class: "empty" },
-				h("p", { text: "No trips yet." }),
+				h("p", { text: readOnlyCount ? "None of your trips can be changed here yet: they come from a file or a sheet, listed below." : "No trips yet." }),
 				h("div", { class: "actions" },
-					h("button", { class: "btn primary grow", text: "Add a trip", onclick: () => newTrip() }),
-					h("button", { class: "btn grow", text: "Import from a file", onclick: () => setTab("import") }))));
+					h("button", { class: "btn primary grow", type: "button", text: "Add a trip", onclick: () => newTrip() }),
+					h("button", { class: "btn grow", type: "button", text: "Import from a file", onclick: () => setTab("import") }))));
 		}
 
 		for (const src of d.readOnly) {
 			if (!src.trips.length) continue;
 			out.push(h("h3", { text: `From ${src.source}` }));
-			out.push(h("p", { class: "muted small", text: src.source === "Google Sheet" ? "These come from your Google Sheet. Change them there; the mirror picks it up on its next check." : `These come from ${src.source}. Change them in that file.` }));
+			if (src.source === "trips.csv") {
+				out.push(h("div", { class: "notice good" },
+					h("p", { text: `These ${src.trips.length} trips come from trips.csv, so they can't be changed here. Move them into the editor to change them on this phone. The file is renamed, not deleted.` }),
+					h("button", { class: "btn primary", type: "button", text: `Move ${src.trips.length} trips into the editor`, onclick: (e) => moveCsv(e.target) })));
+			} else {
+				out.push(h("p", { class: "muted small", text: src.source === "Google Sheet" ? "These come from your Google Sheet. Change them there; the mirror picks it up on its next check." : `These come from ${src.source}. Change them in that file.` }));
+			}
 			out.push(h("div", { "data-source": src.source }, tripGroups(src.trips.filter(matches), true)));
 		}
 		main.replaceChildren(...out);
+	}
+
+	async function moveCsv (button) {
+		button.disabled = true;
+		try {
+			const r = await api("POST", "/import/move-csv");
+			await reload();
+			render();
+			const parts = [`Moved ${r.added + r.combined + r.already} trips into the editor`];
+			if (r.needFixing) parts.push(`${r.needFixing} need${r.needFixing === 1 ? "s" : ""} fixing (listed at the top)`);
+			toast(`${parts.join("; ")}. trips.csv is now called ${r.renamedTo}.`);
+		} catch (err) {
+			button.disabled = false;
+			if (!err.quiet) toast(err.message, true);
+		}
 	}
 
 	function tripGroups (trips, locked) {
@@ -267,7 +404,7 @@
 				return h(locked ? "div" : "button", { class: locked ? "row locked" : "row", type: locked ? null : "button", onclick: locked ? null : () => editTrip(t) },
 					dots(t.travelers),
 					h("span", { class: "row-main" },
-						h("div", { class: "row-title" }, place(t), planned ? h("span", { class: "badge", text: "planned" }) : null),
+						h("div", { class: "row-title" }, place(t), planned ? [" ", h("span", { class: "badge", text: "planned" })] : null),
 						h("div", { class: "row-sub", text: sub })),
 					h("span", { class: "chev", text: locked ? "🔒" : "›" }));
 			})));
@@ -285,7 +422,7 @@
 
 	function editTrip (trip, broken) {
 		// The raw row may carry its own id; the editor must address it by its position id (row-N).
-		S.editing = broken ? { ...broken.raw, id: broken.id, broken: true, errors: broken.errors } : trip;
+		S.editing = broken ? { ...broken.raw, id: broken.id, broken: true, errors: broken.errors, guess: broken.guess } : trip;
 		S.formDraft = null;
 		setTab("add");
 	}
@@ -354,61 +491,133 @@
 				} catch {
 					hits = [];
 				}
+				if (!Array.isArray(hits)) hits = [];
 				if (mine !== seq) return;
-				list.replaceChildren(...hits.map((c) => h("li", {}, h("button", { type: "button", onclick: () => {
+				// "Paris, TX · United States · 25k people", "Munich (München) · Germany"
+				list.replaceChildren(...hits.map((c) => h("li", { role: "option" }, h("button", { type: "button", onclick: () => {
 					onPick(c);
 					close();
-				} }, h("strong", { text: c.name }), `, ${c.countryName}`))));
+					input.focus();
+				} },
+				h("strong", { text: c.name }),
+				c.alias ? ` (${c.alias})` : "",
+				c.region ? `, ${c.region}` : "",
+				h("span", { class: "suggest-sub", text: ` · ${c.countryName} · ${people(c.population)}` })))));
 				list.hidden = !hits.length;
 			}, 180);
 		});
-		input.addEventListener("blur", () => setTimeout(close, 200));
+		// Close when focus leaves both the box and the list (not when moving into the list).
+		const leave = (e) => setTimeout(() => {
+			if (!list.contains(document.activeElement) && document.activeElement !== input) close();
+		}, e && e.type === "blur" ? 200 : 0);
+		input.addEventListener("blur", leave);
+		list.addEventListener("focusout", leave);
+		const options = () => [...list.querySelectorAll("button")];
 		input.addEventListener("keydown", (e) => {
 			if (e.key === "Escape") close();
+			else if (e.key === "ArrowDown" && !list.hidden && options().length) {
+				e.preventDefault();
+				options()[0].focus();
+			}
+		});
+		list.addEventListener("keydown", (e) => {
+			const all = options();
+			const at = all.indexOf(document.activeElement);
+			if (e.key === "ArrowDown" && at < all.length - 1) {
+				e.preventDefault();
+				all[at + 1].focus();
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				if (at > 0) all[at - 1].focus();
+				else input.focus();
+			} else if (e.key === "Escape") {
+				close();
+				input.focus();
+			}
 		});
 		return list;
 	}
 
 	function renderForm () {
-		const t = S.formDraft || S.editing || { city: "", country: "", date: "", days: "", travelers: S.data.travelers.length === 1 ? [S.data.travelers[0].name] : [], note: "", lat: "", lon: "" };
+		const editing = S.editing;
+		// An unreadable row opens with what the mirror could make of it ("May 2019" → May, 2019).
+		const fromBroken = editing && editing.broken && editing.guess
+			? { ...editing, date: editing.guess.date || "", start: editing.guess.start || "", country: editing.guess.country || editing.country || "", travelers: editing.guess.travelers || [] }
+			: null;
+		const t = S.formDraft || fromBroken || editing || { city: "", country: "", date: "", days: "", travelers: S.data.travelers.length === 1 ? [S.data.travelers[0].name] : [], note: "", lat: "", lon: "" };
 		const v = {
 			city: t.city || "",
 			country: t.country ? countryName(countryCode(t.country)) : "",
 			date: t.date || "",
 			start: t.start || "",
 			days: t.days ? String(t.days) : "",
-			travelers: Array.isArray(t.travelers) ? [...t.travelers] : String(t.travelers || "").split(/[;,&]/).map((s) => s.trim()).filter(Boolean),
+			travelers: Array.isArray(t.travelers) ? [...t.travelers] : String(t.travelers || "").split(/[;,&]/).map((x) => x.trim()).filter(Boolean),
 			note: t.note || "",
 			lat: t.lat === null || t.lat === undefined ? "" : String(t.lat),
 			lon: t.lon === null || t.lon === undefined ? "" : String(t.lon)
 		};
-		const keep = () => (S.formDraft = { ...v, id: S.editing && S.editing.id });
-		const errorsBox = h("ul", { class: "errors", hidden: true });
+		const keep = () => (S.formDraft = { ...v, id: editing && editing.id });
+
+		// Each field has a place for its own error, right under it.
+		const slot = () => h("div", { class: "field-error", hidden: true, role: "alert" });
+		const slots = { country: slot(), city: slot(), when: slot(), who: slot(), days: slot(), spot: slot() };
+		const general = h("ul", { class: "errors", hidden: true, role: "alert" });
+		const inputs = {};
 		const showErrors = (list) => {
-			errorsBox.replaceChildren(...list.map((e) => h("li", { text: e })));
-			errorsBox.hidden = !list.length;
+			for (const el of Object.values(slots)) {
+				el.replaceChildren();
+				el.hidden = true;
+			}
+			general.replaceChildren();
+			general.hidden = true;
+			let first = null;
+			for (const message of list) {
+				const field = fieldOf(message);
+				const target = field ? slots[field] : general;
+				const ideas = field === "city" ? suggestionsIn(message) : [];
+				const text = ideas.length ? message.replace(/\s*Did you mean .+\?$/, "") : message;
+				target.append(h(field ? "p" : "li", {}, text, ideas.length ? h("span", { class: "did-you-mean" }, " Did you mean ", ideas.map((idea, n) => [n ? ", " : "", h("button", { type: "button", class: "btn link inline", text: idea, onclick: () => {
+					city.value = v.city = idea;
+					keep();
+					showErrors([]);
+				} })]), "?") : null));
+				target.hidden = false;
+				if (!first) first = field || "general";
+			}
+			if (first) {
+				const el = first === "general" ? general : slots[first];
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+				if (inputs[first]) inputs[first].focus({ preventScroll: true });
+			}
 		};
 
 		const countries = h("datalist", { id: "country-list" }, S.data.countries.map((c) => h("option", { value: c[1] })));
 		const country = h("input", { type: "text", value: v.country, list: "country-list", placeholder: "e.g. Portugal", autocapitalize: "words" });
+		inputs.country = country;
 		country.addEventListener("input", () => {
 			v.country = country.value;
 			keep();
 		});
 		const city = h("input", { type: "text", value: v.city, placeholder: "e.g. Lisbon", autocapitalize: "words" });
+		inputs.city = city;
 		city.addEventListener("input", () => {
 			v.city = city.value;
 			keep();
 		});
+		const spotNote = h("small", { class: "hint spot-note", hidden: true });
 		// Set once the coordinate boxes exist (below): a new place drops the old place's coordinates.
 		let clearSpot = () => {};
+		let setSpot = () => {};
 		const suggest = cityField(city, () => country.value, (c) => {
 			city.value = v.city = c.name;
 			country.value = v.country = c.countryName;
-			clearSpot();
+			// Not the place this name usually means (Paris, TX rather than Paris, France): keep its exact position.
+			if (c.isDefault) clearSpot();
+			else setSpot(c);
 			keep();
 		});
 		const day = dayPicker(v.start, "When");
+		inputs.when = day;
 		const when = monthPicker(v.date, (val) => {
 			v.date = val;
 			v.start = startFrom(v.date, day.value);
@@ -419,6 +628,7 @@
 			keep();
 		});
 		const days = h("input", { type: "number", inputmode: "numeric", min: "1", max: "3650", value: v.days, placeholder: "Optional" });
+		inputs.days = days;
 		days.addEventListener("input", () => {
 			v.days = days.value;
 			keep();
@@ -430,6 +640,7 @@
 		});
 		const lat = h("input", { type: "text", inputmode: "decimal", value: v.lat, placeholder: "e.g. 33.66" });
 		const lon = h("input", { type: "text", inputmode: "decimal", value: v.lon, placeholder: "e.g. -95.55" });
+		inputs.spot = lat;
 		lat.addEventListener("input", () => {
 			v.lat = lat.value;
 			keep();
@@ -439,16 +650,30 @@
 			keep();
 		});
 		clearSpot = () => {
+			spotNote.hidden = true;
 			if (!v.lat && !v.lon) return;
 			v.lat = v.lon = "";
 			lat.value = lon.value = "";
 			keep();
 		};
+		setSpot = (c) => {
+			v.lat = lat.value = String(c.lat);
+			v.lon = lon.value = String(c.lon);
+			spotNote.textContent = `Using ${c.name}${c.region ? `, ${c.region}` : ""} (${people(c.population)}), not the best-known ${c.name}.`;
+			spotNote.hidden = false;
+		};
 		city.addEventListener("input", () => clearSpot());
 		country.addEventListener("input", () => clearSpot());
 
-		const editing = S.editing;
+		const whoPills = travelerPills(v.travelers, (list) => {
+			v.travelers = list;
+			keep();
+		});
+		inputs.who = whoPills.querySelector("input");
+		const unknown = editing && editing.guess && editing.guess.unknownTravelers && editing.guess.unknownTravelers.length ? editing.guess.unknownTravelers : [];
+
 		const save = h("button", { class: "btn primary grow", type: "submit", text: editing ? "Save changes" : "Add trip" });
+		const fresh = !editing && S.formDraft && S.lastAdded;
 		const form = h("form", { class: "card", novalidate: true, onsubmit: async (e) => {
 			e.preventDefault();
 			showErrors([]);
@@ -457,58 +682,90 @@
 			try {
 				const r = editing ? await api("PUT", `/trips/${encodeURIComponent(editing.id)}`, body) : await api("POST", "/trips", body);
 				toast(r.combined ? `Combined with the ${place(r.trip)}, ${formatMonth(r.trip.date)} trip that was already there.` : editing ? "Saved. The mirror updates in a moment." : `Added ${place(r.trip)}. The mirror updates in a moment.`);
-				S.formDraft = null;
 				await reload();
 				if (editing) {
+					S.formDraft = null;
 					S.editing = null;
-					setTab("trips");
-				} else render();
+					setTab("trips", { replace: true });
+				} else {
+					// Ready for the next place on the same trip: same country, month and people.
+					S.formDraft = { country: v.country, date: v.date, start: "", travelers: v.travelers, city: "", days: "", note: "", lat: "", lon: "" };
+					S.lastAdded = place(r.trip);
+					render();
+					const next = main.querySelector("input[placeholder='e.g. Lisbon']");
+					if (next) next.focus();
+				}
 			} catch (err) {
 				if (!err.quiet) showErrors(err.errors || [err.message]);
 			} finally {
 				save.disabled = false;
 			}
 		} },
-		editing && editing.broken ? h("div", { class: "notice" }, h("strong", { text: "This row can't be read: " }), editing.errors.join(". ")) : null,
-		errorsBox,
+		fresh ? h("div", { class: "notice good" }, h("strong", { text: `Added ${S.lastAdded}.` }), " Add another place from this trip, or ",
+			h("button", { type: "button", class: "btn link inline", text: "start a different trip", onclick: () => {
+				S.formDraft = null;
+				S.lastAdded = null;
+				render();
+			} }), ".") : null,
+		editing && editing.broken ? h("div", { class: "notice" }, h("strong", { text: "This row can't be shown on the mirror: " }), editing.errors.join(". ")) : null,
+		general,
 		countries,
-		h("label", { class: "field" }, h("span", { text: "Country" }), country),
-		h("label", { class: "field" }, h("span", { text: "City" }), city, suggest, h("small", { class: "hint", text: "Leave empty for a trip around the whole country, like a road trip." })),
-		h("div", { class: "field" }, h("span", { class: "label", text: "When" }), h("div", { class: "when" }, day, when.month, when.year),
+		h("label", { class: "field" }, h("span", { text: "Country" }), country, slots.country),
+		h("label", { class: "field" }, h("span", { text: "City" }), city, suggest, spotNote, slots.city, h("small", { class: "hint", text: "Leave empty for a trip around the whole country, like a road trip." })),
+		h("div", { class: "field" }, h("span", { class: "label", text: "When" }), h("div", { class: "when" }, day, when.month, when.year), slots.when,
 			h("small", { class: "hint", text: "The day is optional. With it and the days there, the map knows exactly when the trip ended. A month after this one shows as a planned trip." })),
-		h("div", { class: "field" }, h("span", { class: "label", text: "Who went" }), travelerPills(v.travelers, (list) => {
-			v.travelers = list;
-			keep();
-		})),
-		h("label", { class: "field" }, h("span", { text: "Days there" }), days),
+		h("div", { class: "field" }, h("span", { class: "label", text: "Who went" }), whoPills, slots.who,
+			unknown.length ? h("small", { class: "hint warn-text", text: `${unknown.join(" and ")} ${unknown.length === 1 ? "isn't one of the travelers" : "aren't travelers"} in the mirror's config. Pick who went above, or add them to the config first.` }) : null),
+		h("label", { class: "field" }, h("span", { text: "Days there" }), days, slots.days),
 		h("label", { class: "field" }, h("span", { text: "Note" }), note),
 		h("details", { open: Boolean(v.lat || v.lon) },
 			h("summary", { text: "Exact location (optional)" }),
 			h("p", { class: "muted small", text: "Only needed for small places the lookup can't find, or to pick a different town with the same name (Paris, Texas)." }),
 			h("div", { class: "pair" },
 				h("label", { class: "field" }, h("span", { text: "Latitude" }), lat),
-				h("label", { class: "field" }, h("span", { text: "Longitude" }), lon))),
+				h("label", { class: "field" }, h("span", { text: "Longitude" }), lon)),
+			slots.spot),
 		h("div", { class: "actions" },
 			save,
 			editing ? h("button", { class: "btn", type: "button", text: "Cancel", onclick: () => {
 				S.editing = null;
 				S.formDraft = null;
-				setTab("trips");
+				setTab("trips", { replace: true });
 			} }) : null),
 		editing ? h("div", { class: "actions" }, h("button", { class: "btn danger", type: "button", text: "Delete this trip", onclick: async () => {
-			if (!confirm(`Delete ${v.city || v.country || "this trip"}${v.date ? `, ${formatMonth(v.date)}` : ""}? A backup is kept.`)) return;
+			const label = `${v.city || v.country || "this trip"}${v.date ? `, ${formatMonth(v.date)}` : ""}`;
+			if (!confirm(`Delete ${label}?`)) return;
+			const before = { city: v.city, country: countryCode(v.country), date: v.date, start: v.start, days: v.days, travelers: v.travelers, note: v.note, lat: v.lat, lon: v.lon };
 			try {
 				await api("DELETE", `/trips/${encodeURIComponent(editing.id)}`);
-				toast("Deleted.");
 				S.editing = null;
 				S.formDraft = null;
 				await reload();
-				setTab("trips");
+				setTab("trips", { replace: true });
+				// Unreadable rows can't be put back through the form; everything else gets an Undo.
+				toast(`Deleted ${label}.`, false, editing.broken ? null : { label: "Undo", run: async () => {
+					try {
+						await api("POST", "/trips", before);
+						await reload();
+						render();
+						toast(`${label} is back.`);
+					} catch (err) {
+						if (!err.quiet) toast(err.message, true);
+					}
+				} });
 			} catch (err) {
 				if (!err.quiet) showErrors([err.message]);
 			}
 		} })) : null);
 		main.replaceChildren(form);
+	}
+
+	/** "25k people", "1.3M people" */
+	function people (n) {
+		const p = Number(n) || 0;
+		if (p >= 1e6) return `${(p / 1e6).toFixed(1).replace(/\.0$/, "")}M people`;
+		if (p >= 1e3) return `${Math.round(p / 1e3)}k people`;
+		return p ? `${p} people` : "a small place";
 	}
 
 	/* ---------- import ---------- */
@@ -546,8 +803,8 @@
 				} catch {
 					data = {};
 				}
-				if (xhr.status === 401 && data.pinRequired) {
-					showPin(data.error);
+				if ((xhr.status === 401 || xhr.status === 429) && data.pinRequired) {
+					showPin(data, Boolean(pin));
 					return reject(Object.assign(new Error(data.error), { quiet: true }));
 				}
 				if (xhr.status >= 200 && xhr.status < 300) resolve(data);
@@ -610,10 +867,28 @@
 		}, 350);
 	}
 
+	/** Short reasons for rows that can't be saved yet, e.g. "pick who went (3 rows)". */
+	function reasonsFor (errors) {
+		const counts = new Map();
+		const label = (e) => {
+			const field = fieldOf(e);
+			if (field === "who") return "pick who went";
+			if (field === "when") return "pick the month";
+			if (field === "country") return "fill in the country";
+			if (field === "city") return "check the city";
+			return "fix a detail";
+		};
+		for (const list of errors) {
+			for (const l of new Set(list.map(label))) counts.set(l, (counts.get(l) || 0) + 1);
+		}
+		return [...counts].map(([l, n]) => `${l} (${n} row${n === 1 ? "" : "s"})`);
+	}
+
 	function paintChecks () {
 		const imp = S.imp;
 		let good = 0;
-		let bad = 0;
+		let already = 0;
+		const problems = [];
 		imp.result.drafts.forEach((d, i) => {
 			const el = main.querySelector(`[data-draft="${i}"] .status`);
 			const c = imp.checks[i];
@@ -625,12 +900,16 @@
 				return;
 			}
 			if (!c) return;
-			if (c.ok) good++;
-			else bad++;
+			// A row whose trip is already there, with the same people, changes nothing.
+			if (c.ok && c.combinesWith && !(c.adds || []).length) already++;
+			else if (c.ok) good++;
+			else problems.push(c.errors);
 			if (!el) return;
 			if (c.ok) {
-				el.className = "status ok";
-				el.textContent = c.combinesWith ? `✓ Joins the trip already there (${c.combinesWith.travelers.join(" & ")})` : "✓ Ready";
+				const adds = c.adds || [];
+				el.className = c.combinesWith && !adds.length ? "status info" : "status ok";
+				el.textContent = !c.combinesWith ? "✓ Ready"
+					: adds.length ? `✓ Adds ${adds.join(" & ")} to the trip already there` : "Already there, nothing changes";
 				if (d.hint) el.textContent += ` · ${d.hint}`;
 			} else {
 				el.className = "status bad";
@@ -640,10 +919,17 @@
 		const btn = main.querySelector(".save-import");
 		if (btn) {
 			btn.disabled = !good;
-			btn.textContent = good ? `Save ${good} trip${good === 1 ? "" : "s"}` : "Nothing to save yet";
+			btn.textContent = good ? `Save ${good} trip${good === 1 ? "" : "s"}` : already && !problems.length ? "Nothing new to save" : "Nothing to save yet";
 		}
+		// Why some rows (or all) can't be saved, right next to the button.
 		const note = main.querySelector(".save-note");
-		if (note) note.textContent = bad ? `${bad} need${bad === 1 ? "s" : ""} fixing or unticking` : "";
+		if (note) {
+			const reasons = reasonsFor(problems);
+			const parts = [];
+			if (reasons.length) parts.push(`To save ${good ? "the rest" : "these"}: ${reasons.join(", ")}, or untick them.`);
+			if (already) parts.push(`${already} ${already === 1 ? "is" : "are"} already there.`);
+			note.textContent = parts.join(" ");
+		}
 	}
 
 	function renderImport () {
@@ -707,6 +993,22 @@
 			r.home ? h("div", { class: "small", text: r.home.guessed ? `Home looks like ${r.home.name}, where you spent the most time. Set home in the mirror's config if that's wrong.` : `Home: ${r.home.name || "from your config"}.` }) : null,
 			r.kind === "places" ? h("div", { class: "small", text: "Saved places don't have dates. Pick the month you were there on each row, or for all ticked rows at once below." }) : null,
 			r.warnings.length ? h("ul", {}, r.warnings.map((w) => h("li", { class: "small", text: w }))) : null));
+		const needWho = r.drafts.filter((d) => d.include && !d.travelers.length).length;
+		if (needWho) {
+			const pills = travelerPills(S.data.travelers.length === 1 ? [S.data.travelers[0].name] : [], () => {}, false);
+			out.push(h("div", { class: "card who-first" },
+				h("h2", { text: "Who went on these trips?" }),
+				h("p", { class: "muted small", text: `${needWho} row${needWho === 1 ? " doesn't" : "s don't"} say. Pick the people and they're added to every row; you can still change single rows below.` }),
+				pills,
+				h("div", { class: "actions" }, h("button", { class: "btn primary", type: "button", text: "Set for all rows", onclick: () => {
+					const list = [...pills.querySelectorAll("input")].map((b, i) => (b.checked ? S.data.travelers[i].name : null)).filter(Boolean);
+					if (!list.length) return toast("Tick at least one person first", true);
+					for (const d of r.drafts) if (!d.travelers.length) d.travelers = [...list];
+					imp.who = list;
+					renderReview();
+					check();
+				} }))));
+		}
 		if (r.alsoFound.length) {
 			out.push(h("div", { class: "toolbar" }, h("span", { class: "muted small", text: "This upload also has:" }),
 				r.alsoFound.map((k) => h("button", { class: "btn link", type: "button", text: { trips: "a trips file", timeline: "Timeline history", places: "saved places" }[k], onclick: () => parseFiles(imp.files, { want: k }) }))));
@@ -760,11 +1062,12 @@
 
 		out.push(h("div", {}, r.drafts.map((d, i) => draftCard(d, i))));
 		const save = h("button", { class: "btn primary grow save-import", type: "button", disabled: true, text: "Checking…", onclick: saveImport });
-		out.push(h("div", { class: "sticky-actions" }, save, h("button", { class: "btn", type: "button", text: "Start over", onclick: () => {
-			S.imp = { who: imp.who };
-			renderImport();
-		} })));
-		out.push(h("p", { class: "muted small save-note" }));
+		out.push(h("div", { class: "sticky-actions" },
+			h("div", { class: "sticky-row" }, save, h("button", { class: "btn", type: "button", text: "Start over", onclick: () => {
+				S.imp = { who: imp.who };
+				renderImport();
+			} })),
+			h("p", { class: "small save-note", "aria-live": "polite" })));
 		main.replaceChildren(...out);
 		if (imp.checks && imp.checks.length) paintChecks();
 	}
@@ -777,7 +1080,7 @@
 
 	function draftCard (d, i) {
 		const changed = () => check();
-		const box = h("input", { type: "checkbox", checked: d.include, "aria-label": "Import this row" });
+		const box = h("input", { type: "checkbox", checked: d.include, "aria-label": `Import ${[d.city, d.country ? countryName(countryCode(d.country)) : ""].filter(Boolean).join(", ") || d.note || "this row"}` });
 		const card = h("div", { class: d.include ? "draft" : "draft off", "data-draft": String(i) });
 		box.addEventListener("change", () => {
 			d.include = box.checked;
@@ -849,7 +1152,11 @@
 		const s = S.imp.saved;
 		main.replaceChildren(h("div", { class: "card" },
 			h("h2", { text: "Imported" }),
-			h("p", { text: `${s.added} new trip${s.added === 1 ? "" : "s"} added${s.combined ? `, ${s.combined} combined with trips already there` : ""}.` }),
+			h("p", { text: [
+				`${s.added} new trip${s.added === 1 ? "" : "s"} added`,
+				s.combined ? `${s.combined} joined trip${s.combined === 1 ? "" : "s"} already there` : "",
+				s.already ? `${s.already} ${s.already === 1 ? "was" : "were"} already there` : ""
+			].filter(Boolean).join(", ") + "." }),
 			s.combined ? h("p", { class: "muted small", text: "When two people import the same city and month, the trip becomes a together trip." }) : null,
 			h("p", { class: "muted small", text: "The mirror updates in a moment. A backup of the old list was kept (More → Backups)." }),
 			h("div", { class: "actions" },
@@ -865,6 +1172,14 @@
 
 	/* ---------- more: sheet, download, backups ---------- */
 
+	/** "24 trips · 2 more than now" (rows in the backup compared with rows in the list now) */
+	function backupSummary (rows) {
+		const now = S.data.trips.length + S.data.broken.length;
+		const diff = rows - now;
+		const change = diff === 0 ? "same as now" : `${Math.abs(diff)} ${diff > 0 ? "more" : "fewer"} than now`;
+		return `${rows} trip${rows === 1 ? "" : "s"} · ${change}`;
+	}
+
 	async function renderMore () {
 		const d = S.data;
 		const out = [];
@@ -877,9 +1192,13 @@
 				h("button", { class: "btn", type: "button", text: "Check the sheet now", onclick: async (e) => {
 					e.target.disabled = true;
 					try {
-						await api("POST", "/sheet/refresh");
+						const res = await api("POST", "/sheet/refresh");
 						await reload();
-						toast("Sheet checked.");
+						if (res.sheet && res.sheet.error) toast(res.sheet.error, true);
+						else {
+							const fromSheet = S.data.readOnly.find((x) => x.source === "Google Sheet");
+							toast(`Sheet checked: ${fromSheet ? fromSheet.trips.length : 0} trips.`);
+						}
 						renderMore();
 					} catch (err) {
 						if (!err.quiet) toast(err.message, true);
@@ -914,13 +1233,13 @@
 			backups.replaceChildren(...(r.backups.length ? r.backups.map((b) => h("div", { class: "row locked" },
 				h("span", { class: "row-main" },
 					h("div", { class: "row-title", text: b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name }),
-					h("div", { class: "row-sub", text: b.trips === null ? "Can't be read" : `${b.trips} trip${b.trips === 1 ? "" : "s"}` })),
+					h("div", { class: "row-sub", text: b.trips === null ? "Can't be read" : backupSummary(b.trips) })),
 				h("button", { class: "btn", type: "button", text: "Restore", onclick: async () => {
 					if (!confirm(`Put back the list from ${b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name}? Your current list is backed up first.`)) return;
 					try {
 						const res = await api("POST", "/backups/restore", { name: b.name });
 						await reload();
-						toast(`Restored ${res.trips} trips.`);
+						toast(`Restored ${res.trips} trip${res.trips === 1 ? "" : "s"}${res.unreadable ? `, plus ${res.unreadable} row${res.unreadable === 1 ? "" : "s"} to fix` : ""}.`);
 						renderMore();
 					} catch (err) {
 						if (!err.quiet) toast(err.message, true);
@@ -937,7 +1256,7 @@
 		main.replaceChildren(h("p", { class: "loading", text: "Loading your trips…" }));
 		try {
 			await reload();
-			setTab(S.tab);
+			setTab(S.tab, { replace: true });
 		} catch (err) {
 			if (!err.quiet) failed(err);
 		}
@@ -945,6 +1264,7 @@
 
 	for (const b of document.querySelectorAll(".tabs button")) {
 		b.addEventListener("click", () => {
+			if (importInProgress() && b.dataset.tab !== "import" && !confirm("Leave this import? Nothing has been saved yet.")) return;
 			if (b.dataset.tab === "add" && S.tab !== "add") {
 				if (!S.formDraft) S.editing = null;
 			}
