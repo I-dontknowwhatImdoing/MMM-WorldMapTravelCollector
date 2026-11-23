@@ -491,3 +491,131 @@
 	text-decoration-color: rgba(178, 58, 46, 0.6);
 	text-underline-offset: 0.2em;
 }
+
+/* Details card: tap a pin or a country (details: true) */
+
+.wmtc-country[data-code],
+.wmtc-pin {
+	cursor: pointer;
+}
+
+.wmtc-halo {
+	pointer-events: none;
+}
+
+.wmtc-country.wmtc-selected {
+	stroke: var(--wmtc-text);
+	stroke-width: calc(var(--wmtc-line) * 2.5);
+	stroke-opacity: 1;
+}
+
+.wmtc-pin.wmtc-selected {
+	stroke: var(--wmtc-text);
+	stroke-width: calc(var(--wmtc-line) * 2.5);
+	opacity: 1;
+}
+
+.wmtc-detail {
+	position: absolute;
+	z-index: 5;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: min(24em, calc(100% - 8px));
+	padding: 0.7em 2.2em 0.8em 1em;
+	border: 1px solid var(--wmtc-muted);
+	border-radius: 0.6em;
+	background: rgba(10, 10, 10, 0.94);
+	color: var(--wmtc-text);
+	font-size: calc(var(--wmtc-font) * 0.85);
+	line-height: 1.35;
+	text-align: left;
+	box-shadow: 0 0.4em 1.6em rgba(0, 0, 0, 0.6);
+}
+
+.wmtc-detail-close {
+	position: absolute;
+	top: 0.25em;
+	right: 0.3em;
+	width: 1.8em;
+	height: 1.8em;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--wmtc-muted);
+	font: inherit;
+	font-size: 1.25em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.wmtc-detail-title {
+	font-size: 1.2em;
+	font-weight: 600;
+	margin-bottom: 0.25em;
+}
+
+.wmtc-detail-facts,
+.wmtc-detail-visits {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.wmtc-detail-facts {
+	color: var(--wmtc-muted);
+	margin-bottom: 0.5em;
+}
+
+.wmtc-detail-visits li {
+	padding: 0.3em 0;
+	border-top: 1px solid var(--wmtc-faint);
+}
+
+.wmtc-detail-when {
+	font-weight: 600;
+	margin-right: 0.5em;
+}
+
+.wmtc-detail-place {
+	margin-right: 0.5em;
+}
+
+.wmtc-detail-info {
+	color: var(--wmtc-muted);
+}
+
+.wmtc-detail-tag {
+	margin-left: 0.5em;
+	padding: 0 0.45em;
+	border: 1px dashed var(--wmtc-muted);
+	border-radius: 0.8em;
+	font-size: 0.85em;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-detail-planned .wmtc-detail-when,
+.wmtc-detail-planned .wmtc-detail-place {
+	font-style: italic;
+}
+
+.wmtc-detail-note {
+	font-style: italic;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-detail-more {
+	margin-top: 0.3em;
+	color: var(--wmtc-muted);
+}
+
+.wmtc-theme-analog .wmtc-detail {
+	background: var(--wmtc-paper);
+	border-color: var(--wmtc-ink);
+	color: var(--wmtc-ink);
+	box-shadow: 0.15em 0.25em 0.9em rgba(61, 47, 31, 0.35);
+}
+
+.wmtc-theme-analog .wmtc-country.wmtc-selected,
+.wmtc-theme-analog .wmtc-pin.wmtc-selected {
+	stroke: var(--wmtc-ink);
+}

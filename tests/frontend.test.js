@@ -159,7 +159,7 @@ describe("map", () => {
 	});
 
 	test("projections", async () => {
-		for (const projection of ["mercator", "naturalEarth", "equalEarth"]) {
+		for (const projection of ["mercator", "naturalEarth", "equirectangular", "equalEarth"]) {
 			const m = await mount({ projection });
 			data(m);
 			expect($$(".wmtc-pin")).toHaveLength(4);
@@ -230,6 +230,96 @@ describe("map", () => {
 		const quiet = await mount({ showProblems: false });
 		data(quiet, { ...model, problems: [{}] });
 		expect(text(".wmtc-footer")).toBe("");
+	});
+});
+
+describe("details card", () => {
+	const click = (target, coords = {}) => target.dispatchEvent(new MouseEvent("click", { bubbles: true, ...coords }));
+	const country = (code) => document.querySelector(`.wmtc-country[data-code='${code}']`);
+
+	test("tapping a pin shows its visits; the nearest pin wins", async () => {
+		const m = await mount();
+		data(m);
+		const lisbon = m.pinPoints.find((p) => p.key === "lisbon|PT");
+		click(document.querySelector(".wmtc-svg"), { clientX: lisbon.x + 3, clientY: lisbon.y - 2 });
+		expect(text(".wmtc-detail-title")).toBe("Lisbon, Portugal");
+		expect(text(".wmtc-detail-visit")).toBe("Mar 20255 days · Alex & Sam");
+		expect($$(".wmtc-pin.wmtc-selected")).toHaveLength(1);
+		expect(document.querySelector(".wmtc-detail").style.left).toMatch(/px$/);
+		// Without coordinates (keyboard, assistive tech), the pin itself is used.
+		click(document.querySelector(".wmtc-pin[data-pin='chicago|US']"));
+		expect(text(".wmtc-detail-title")).toBe("Chicago, United States");
+		expect($$(".wmtc-detail")).toHaveLength(1);
+	});
+
+	test("tapping a country shows its summary; planned trips are marked", async () => {
+		const m = await mount();
+		data(m);
+		click(country("PT"));
+		expect(text(".wmtc-detail-title")).toBe("Portugal");
+		expect($$(".wmtc-detail-facts li").map((li) => li.textContent)).toEqual(["1 trip · 1 city · 5 days in total", "Visited Mar 2025", "With Alex & Sam"]);
+		expect(country("PT").classList.contains("wmtc-selected")).toBe(true);
+		click(country("ZA"));
+		expect(text(".wmtc-detail-tag")).toBe("planned");
+		expect($$(".wmtc-detail-planned")).toHaveLength(1);
+		expect(country("PT").classList.contains("wmtc-selected")).toBe(false);
+	});
+
+	test("closes with ×, a tap elsewhere, a redraw, hiding the module, or after detailsTimeout", async () => {
+		const m = await mount({ detailsTimeout: 5 });
+		data(m);
+		click(country("PT"));
+		click(document.querySelector(".wmtc-detail-title"));
+		expect($$(".wmtc-detail")).toHaveLength(1);
+		click(document.querySelector(".wmtc-detail-close"));
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		click(country("PT"));
+		click(document.querySelector(".wmtc-svg"));
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		click(country("IS"));
+		m.setView("together");
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		click(country("PT"));
+		m.suspend();
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		jest.useFakeTimers();
+		click(country("PT"));
+		jest.advanceTimersByTime(4900);
+		expect($$(".wmtc-detail")).toHaveLength(1);
+		jest.advanceTimersByTime(200);
+		expect($$(".wmtc-detail")).toHaveLength(0);
+	});
+
+	test("pauses rotation while open; detailsTimeout 0 keeps it open until closed", async () => {
+		const m = await mount({ detailsTimeout: 0, touchPause: 60 });
+		data(m);
+		click(country("PT"));
+		expect(m.pausedUntil).toBe(Infinity);
+		click(document.querySelector(".wmtc-detail-close"));
+		expect(m.pausedUntil).toBeGreaterThan(Date.now() + 50000);
+		expect(m.pausedUntil).toBeLessThan(Infinity);
+	});
+
+	test("respects showPlanned, details: false, and taps before data arrives", async () => {
+		const hidden = await mount({ showPlanned: false });
+		data(hidden);
+		hidden.showDetails("country", ["cpt"]);
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		const off = await mount({ details: false });
+		data(off);
+		click(country("PT"));
+		expect($$(".wmtc-detail")).toHaveLength(0);
+
+		const early = await mount();
+		early.showDetails("pin", ["lis"]);
+		early.onMapClick({ target: null });
+		click(document.querySelector(".wmtc-country"));
+		expect($$(".wmtc-detail")).toHaveLength(0);
 	});
 });
 
