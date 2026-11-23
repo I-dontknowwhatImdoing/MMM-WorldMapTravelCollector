@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Editor: easier on a phone
+
+- Mistakes show under the field they're about, and the page scrolls to the first one. A misspelled city offers "Did you mean…" buttons.
+- City suggestions show the state or region and size ("Paris, TX · United States · 25k people"), so same-name towns can be told apart. Picking a smaller one says so. Local and old names work too: typing "München", "Seville" or "Oporto" finds the city.
+- After adding a place, the country, month and travelers stay filled in for the next stop on the same trip.
+- Deleting a trip can be undone from the message at the bottom.
+- The phone's Back button moves between the editor's screens instead of leaving the page. Leaving an import half-done asks first.
+- Rows that couldn't be read open with everything that could be read already filled in; travelers not in the config are named.
+- Trips kept in trips.csv (read-only in the editor) can be moved into the editor with one button. The file is renamed, not deleted.
+- Importing: a "Who went on these trips?" card sets the travelers for every row at once. The Save button says why it's waiting ("pick who went (3 rows)") and only counts rows that change something.
+- The PIN screen says how many tries are left and how long to wait after too many.
+- Restoring a backup lists how many trips it holds compared with now.
+- Clearer messages when the Google Sheet can't be reached; coordinates typed with a comma (38,72) are read; the CSV download has country names.
+- Small screens (320 px): rows wrap instead of running off the side; buttons are at least 44 px tall; the city list works with the arrow keys.
+
 ### Fixes from the pre-release review
 
 - Changing a trip's city in the editor now moves its pin. Before, the old city's position was kept.

@@ -75,7 +75,7 @@ describe("sheet source", () => {
 		const offline = createSheetSource({ url: "https://example.com/t.csv", cacheFile, fetch: fakeFetch(new TypeError("fetch failed")) });
 		expect(offline.text).toContain("Paris");
 		expect(await offline.refresh()).toBe(false);
-		expect(offline.status).toMatchObject({ ok: false, error: "fetch failed" });
+		expect(offline.status).toMatchObject({ ok: false, error: "Couldn't reach Google. Check the mirror's internet connection" });
 		expect(offline.text).toContain("Paris");
 	});
 

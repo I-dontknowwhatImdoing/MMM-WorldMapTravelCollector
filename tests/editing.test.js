@@ -139,12 +139,15 @@ describe("trip book", () => {
 			{ city: "Kyoto", country: "JP", date: "", travelers: [] }
 		];
 		const checks = b.checkMany(rows);
-		expect(checks[0]).toMatchObject({ ok: true, combinesWith: { city: "Lisbon", travelers: ["Alex"] } });
+		expect(checks[0]).toMatchObject({ ok: true, combinesWith: { city: "Lisbon", travelers: ["Alex"] }, adds: ["Sam"] });
+		expect(checks[1]).toMatchObject({ adds: ["Alex", "Sam"] });
 		expect(checks[1]).toMatchObject({ ok: true, combinesWith: null });
 		expect(checks[2]).toEqual({ ok: false, errors: ["Date is missing", "No travelers listed"] });
 
 		const r = b.importMany(rows);
-		expect(r).toEqual({ added: 1, combined: 1, rejected: [{ row: 3, errors: ["Date is missing", "No travelers listed"] }], total: 2 });
+		expect(r).toEqual({ added: 1, combined: 1, already: 0, rejected: [{ row: 3, errors: ["Date is missing", "No travelers listed"] }], total: 2 });
+		// Importing the same trip again adds nobody: it's "already there", not "combined".
+		expect(b.importMany([rows[0]])).toMatchObject({ added: 0, combined: 0, already: 1 });
 		expect(b.load().trips.find((t) => t.city === "Lisbon").travelers).toEqual(["Alex", "Sam"]);
 
 		const before = fs.statSync(file).mtimeMs;
@@ -160,7 +163,7 @@ describe("trip book", () => {
 		b.add({ city: "Rome", country: "IT", date: "2022-09", travelers: ["Alex"] });
 		const list = b.backups();
 		expect(list.map((x) => x.trips)).toEqual([2, 1]);
-		expect(b.restore(list[1].name)).toBe(1);
+		expect(b.restore(list[1].name)).toEqual({ trips: 1, unreadable: 0 });
 		expect(b.load().trips.map((t) => t.city)).toEqual(["Lisbon"]);
 		expect(b.backups()[0].trips).toBe(3);
 

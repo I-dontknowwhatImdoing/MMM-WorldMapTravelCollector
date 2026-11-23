@@ -1,222 +1,277 @@
 {
  "lisboa": [
   "Lisbon",
-  "PT"
+  "PT",
+  "Lisboa"
  ],
  "porto": [
   "Porto",
-  "PT"
+  "PT",
+  "Porto"
  ],
  "oporto": [
   "Porto",
-  "PT"
+  "PT",
+  "Oporto"
  ],
  "roma": [
   "Rome",
-  "IT"
+  "IT",
+  "Roma"
  ],
  "firenze": [
   "Florence",
-  "IT"
+  "IT",
+  "Firenze"
  ],
  "venezia": [
   "Venice",
-  "IT"
+  "IT",
+  "Venezia"
  ],
  "milano": [
   "Milan",
-  "IT"
+  "IT",
+  "Milano"
  ],
  "napoli": [
   "Naples",
-  "IT"
+  "IT",
+  "Napoli"
  ],
  "torino": [
   "Turin",
-  "IT"
+  "IT",
+  "Torino"
  ],
  "genova": [
   "Genoa",
-  "IT"
+  "IT",
+  "Genova"
  ],
  "munchen": [
   "Munich",
-  "DE"
+  "DE",
+  "München"
  ],
  "cologne": [
   "Köln",
-  "DE"
+  "DE",
+  "Cologne"
  ],
  "nuremberg": [
   "Nürnberg",
-  "DE"
+  "DE",
+  "Nuremberg"
  ],
  "wien": [
   "Vienna",
-  "AT"
+  "AT",
+  "Wien"
  ],
  "praha": [
   "Prague",
-  "CZ"
+  "CZ",
+  "Praha"
  ],
  "warszawa": [
   "Warsaw",
-  "PL"
+  "PL",
+  "Warszawa"
  ],
  "krakow": [
   "Kraków",
-  "PL"
+  "PL",
+  "Krakow"
  ],
  "cracow": [
   "Kraków",
-  "PL"
+  "PL",
+  "Cracow"
  ],
  "bucuresti": [
   "Bucharest",
-  "RO"
+  "RO",
+  "Bucuresti"
  ],
  "beograd": [
   "Belgrade",
-  "RS"
+  "RS",
+  "Beograd"
  ],
  "athina": [
   "Athens",
-  "GR"
+  "GR",
+  "Athina"
  ],
  "geneva": [
   "Genève",
-  "CH"
+  "CH",
+  "Geneva"
  ],
  "zurich": [
   "Zürich",
-  "CH"
+  "CH",
+  "Zurich"
  ],
  "bruxelles": [
   "Brussels",
-  "BE"
+  "BE",
+  "Bruxelles"
  ],
  "brussel": [
   "Brussels",
-  "BE"
+  "BE",
+  "Brussel"
  ],
  "antwerpen": [
   "Antwerpen",
-  "BE"
+  "BE",
+  "Antwerpen"
  ],
  "antwerp": [
   "Antwerpen",
-  "BE"
+  "BE",
+  "Antwerp"
  ],
  "brugge": [
   "Brugge",
-  "BE"
+  "BE",
+  "Brugge"
  ],
  "bruges": [
   "Brugge",
-  "BE"
+  "BE",
+  "Bruges"
  ],
  "gent": [
   "Gent",
-  "BE"
+  "BE",
+  "Gent"
  ],
  "ghent": [
   "Gent",
-  "BE"
+  "BE",
+  "Ghent"
  ],
  "den haag": [
   "The Hague",
-  "NL"
+  "NL",
+  "Den Haag"
  ],
  "kobenhavn": [
   "Copenhagen",
-  "DK"
+  "DK",
+  "Kobenhavn"
  ],
  "gothenburg": [
   "Göteborg",
-  "SE"
+  "SE",
+  "Gothenburg"
  ],
  "sevilla": [
   "Sevilla",
-  "ES"
+  "ES",
+  "Sevilla"
  ],
  "seville": [
   "Sevilla",
-  "ES"
+  "ES",
+  "Seville"
  ],
  "moskva": [
   "Moscow",
-  "RU"
+  "RU",
+  "Moskva"
  ],
  "kiev": [
   "Kyiv",
-  "UA"
+  "UA",
+  "Kiev"
  ],
  "peking": [
   "Beijing",
-  "CN"
+  "CN",
+  "Peking"
  ],
  "bombay": [
   "Mumbai",
-  "IN"
+  "IN",
+  "Bombay"
  ],
  "calcutta": [
   "Kolkata",
-  "IN"
+  "IN",
+  "Calcutta"
  ],
  "madras": [
   "Chennai",
-  "IN"
+  "IN",
+  "Madras"
  ],
  "bengaluru": [
   "Bengaluru",
-  "IN"
+  "IN",
+  "Bengaluru"
  ],
  "bangalore": [
   "Bengaluru",
-  "IN"
+  "IN",
+  "Bangalore"
  ],
  "saigon": [
   "Ho Chi Minh City",
-  "VN"
+  "VN",
+  "Saigon"
  ],
  "rangoon": [
   "Yangon",
-  "MM"
+  "MM",
+  "Rangoon"
  ],
  "ciudad de mexico": [
   "Mexico City",
-  "MX"
+  "MX",
+  "Ciudad de Mexico"
  ],
  "cdmx": [
   "Mexico City",
-  "MX"
+  "MX",
+  "CDMX"
  ],
  "marrakech": [
   "Marrakesh",
-  "MA"
+  "MA",
+  "Marrakech"
  ],
  "nyc": [
   "New York City",
-  "US"
+  "US",
+  "NYC"
  ],
  "new york": [
   "New York City",
-  "US"
+  "US",
+  "New York"
  ],
  "la": [
   "Los Angeles",
-  "US"
+  "US",
+  "LA"
  ],
  "dc": [
   "Washington, D.C.",
-  "US"
+  "US",
+  "DC"
  ],
  "washington dc": [
   "Washington, D.C.",
-  "US"
+  "US",
+  "Washington DC"
  ],
  "washington": [
   "Washington, D.C.",
-  "US"
+  "US",
+  "Washington"
  ]
 }
